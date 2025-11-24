@@ -40,7 +40,7 @@ export const readWorkflowFile = (file: File): Promise<Workflow> => {
  * Generates a unique node ID
  */
 export const generateNodeId = (type: string): string => {
-  return `${type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  return `${type}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
 }
 
 /**

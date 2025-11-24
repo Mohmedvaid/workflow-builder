@@ -84,7 +84,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         id: node.id,
         type: node.type,
         position: node.position,
-        data: node.data,
+        data: { ...node.data, type: node.type },
       })),
       edges: workflow.edges.map((edge) => ({
         id: edge.id,

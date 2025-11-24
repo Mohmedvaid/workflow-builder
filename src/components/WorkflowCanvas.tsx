@@ -1,26 +1,135 @@
+import { useCallback, useMemo, useState, useEffect } from 'react'
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  type Node,
+  type Connection,
+  type OnNodesChange,
+  type OnEdgesChange,
+  type OnConnect,
+  type NodeMouseHandler,
+  addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
+} from 'reactflow'
+import 'reactflow/dist/style.css'
+import { useWorkflowStore } from '@/store/workflowStore'
+import BaseNode from './nodes/BaseNode'
+import NodeConfigPanel from './NodeConfigPanel'
+
+const nodeTypes = {
+  default: BaseNode,
+  trigger: BaseNode,
+  action: BaseNode,
+  condition: BaseNode,
+  transform: BaseNode,
+}
+
 export default function WorkflowCanvas() {
+  const { nodes, edges, setNodes, setEdges } = useWorkflowStore()
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+
+  const onNodesChange: OnNodesChange = useCallback(
+    (changes) => {
+      // Close config panel if selected node is being deleted
+      const isSelectedNodeDeleted = changes.some(
+        (change) => change.type === 'remove' && change.id === selectedNode?.id
+      )
+      if (isSelectedNodeDeleted) {
+        setSelectedNode(null)
+      }
+      setNodes(applyNodeChanges(changes, nodes))
+    },
+    [nodes, setNodes, selectedNode]
+  )
+
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) => {
+      setEdges(applyEdgeChanges(changes, edges))
+    },
+    [edges, setEdges]
+  )
+
+  const onConnect: OnConnect = useCallback(
+    (connection: Connection) => {
+      if (connection.source && connection.target) {
+        // Prevent connecting a node to itself
+        if (connection.source === connection.target) {
+          return
+        }
+        setEdges(addEdge(connection, edges))
+      }
+    },
+    [edges, setEdges]
+  )
+
+  const defaultViewport = useMemo(() => ({ x: 0, y: 0, zoom: 1 }), [])
+
+  const defaultEdgeOptions = useMemo(
+    () => ({
+      style: { strokeWidth: 2, stroke: '#6b7280' },
+      type: 'smoothstep',
+      animated: false,
+    }),
+    []
+  )
+
+  const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
+    setSelectedNode(node)
+  }, [])
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null)
+  }, [])
+
+  // Sync selected node with store when nodes update
+  useEffect(() => {
+    if (selectedNode) {
+      const updatedNode = nodes.find((n) => n.id === selectedNode.id)
+      if (updatedNode) {
+        setSelectedNode(updatedNode)
+      }
+    }
+  }, [nodes, selectedNode?.id])
+
   return (
-    <div className="flex-1 bg-gray-50 relative">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-              />
-            </svg>
-          </div>
-          <p className="text-gray-500 text-sm">Canvas area - React Flow will be integrated here</p>
-        </div>
-      </div>
+    <div className="w-full h-full relative">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
+        nodeTypes={nodeTypes}
+        defaultViewport={defaultViewport}
+        defaultEdgeOptions={defaultEdgeOptions}
+        fitView
+        deleteKeyCode={['Backspace', 'Delete']}
+        attributionPosition="bottom-left"
+        connectionLineStyle={{ strokeWidth: 2, stroke: '#6b7280' }}
+      >
+        <Background color="#e5e7eb" gap={16} />
+        <Controls />
+        <MiniMap
+          nodeColor={(node: Node) => {
+            const type = (node.data as { type?: string })?.type || 'action'
+            const colors: Record<string, string> = {
+              trigger: '#10b981',
+              action: '#3b82f6',
+              condition: '#eab308',
+              transform: '#a855f7',
+            }
+            return colors[type] || '#6b7280'
+          }}
+          maskColor="rgba(0, 0, 0, 0.1)"
+        />
+      </ReactFlow>
+      {selectedNode && (
+        <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+      )}
     </div>
   )
 }
