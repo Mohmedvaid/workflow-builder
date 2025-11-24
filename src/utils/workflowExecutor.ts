@@ -14,7 +14,8 @@ interface ExecutionStore {
 }
 
 /**
- * Executes a workflow starting from trigger nodes
+ * Executes a workflow starting from the trigger node
+ * Only executes nodes connected to the trigger node
  */
 export async function executeWorkflow(
   workflow: Workflow,
@@ -29,24 +30,24 @@ export async function executeWorkflow(
     executionStore.startExecution()
   }
 
-  // Find all trigger nodes (nodes with no incoming edges)
-  const triggerNodes = workflow.nodes.filter(
-    (node) => !workflow.edges.some((edge) => edge.target === node.id)
-  )
+  // Find the trigger node (must be type 'trigger')
+  const triggerNode = workflow.nodes.find((node) => node.type === 'trigger')
 
-  if (triggerNodes.length === 0) {
+  if (!triggerNode) {
     if (executionStore) {
       executionStore.stopExecution()
     }
-    context.errors.push({ nodeId: '', error: 'No trigger nodes found in workflow' })
+    context.errors.push({ nodeId: '', error: 'No trigger node found in workflow. A workflow must have exactly one trigger node.' })
     return context
   }
 
   try {
-    // Execute each trigger node and follow the workflow
-    for (const triggerNode of triggerNodes) {
-      await executeNode(triggerNode, workflow, context, null, executionStore)
-    }
+    // Build a graph of reachable nodes from the trigger
+    const reachableNodes = getReachableNodes(triggerNode.id, workflow)
+    
+    // Execute starting from the trigger node
+    // Only nodes in reachableNodes will be executed
+    await executeNode(triggerNode, workflow, context, null, executionStore, reachableNodes)
   } finally {
     if (executionStore) {
       executionStore.stopExecution()
@@ -57,6 +58,34 @@ export async function executeWorkflow(
 }
 
 /**
+ * Gets all nodes reachable from a starting node using BFS
+ * This ensures we only execute nodes connected to the trigger
+ */
+function getReachableNodes(startNodeId: string, workflow: Workflow): Set<string> {
+  const reachable = new Set<string>()
+  const queue: string[] = [startNodeId]
+  
+  while (queue.length > 0) {
+    const currentNodeId = queue.shift()!
+    if (reachable.has(currentNodeId)) {
+      continue
+    }
+    
+    reachable.add(currentNodeId)
+    
+    // Find all nodes connected from this node
+    const outgoingEdges = workflow.edges.filter((edge) => edge.source === currentNodeId)
+    for (const edge of outgoingEdges) {
+      if (!reachable.has(edge.target)) {
+        queue.push(edge.target)
+      }
+    }
+  }
+  
+  return reachable
+}
+
+/**
  * Executes a single node
  */
 async function executeNode(
@@ -64,8 +93,13 @@ async function executeNode(
   workflow: Workflow,
   context: ExecutionContext,
   input: unknown,
-  executionStore?: ExecutionStore
+  executionStore?: ExecutionStore,
+  reachableNodes?: Set<string>
 ): Promise<unknown> {
+  // Skip nodes that are not reachable from the trigger
+  if (reachableNodes && !reachableNodes.has(node.id)) {
+    return null
+  }
   try {
     // Set current node and input for visual feedback
     if (executionStore) {
@@ -112,7 +146,7 @@ async function executeNode(
 
     context.nodeOutputs.set(node.id, output)
 
-    // Set output for visual feedback
+    // Set output for visual feedback and save to history
     if (executionStore) {
       executionStore.setNodeOutput(node.id, output)
     }
@@ -122,7 +156,7 @@ async function executeNode(
     for (const edge of outgoingEdges) {
       const targetNode = workflow.nodes.find((n) => n.id === edge.target)
       if (targetNode) {
-        await executeNode(targetNode, workflow, context, output, executionStore)
+        await executeNode(targetNode, workflow, context, output, executionStore, reachableNodes)
       }
     }
 

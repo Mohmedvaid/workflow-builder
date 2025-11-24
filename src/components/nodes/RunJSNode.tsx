@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps } from 'reactflow'
 import { Code2 } from 'lucide-react'
 import { useExecutionStore } from '@/store/executionStore'
+import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'
 
 interface RunJSNodeData {
@@ -12,9 +13,15 @@ interface RunJSNodeData {
 
 export default function RunJSNode({ data, selected, id }: NodeProps<RunJSNodeData>) {
   const { currentNodeId, nodeInputs, nodeOutputs, isRunning } = useExecutionStore()
+  const { getLatestNodeData } = useExecutionHistoryStore()
   const isCurrentlyRunning = currentNodeId === id && isRunning
-  const input = nodeInputs.get(id)
-  const output = nodeOutputs.get(id)
+  
+  const currentInput = nodeInputs[id]
+  const currentOutput = nodeOutputs[id]
+  const historyData = getLatestNodeData(id)
+  
+  const input = currentInput !== undefined ? currentInput : (historyData?.input !== undefined ? historyData.input : undefined)
+  const output = currentOutput !== undefined ? currentOutput : (historyData?.output !== undefined ? historyData.output : undefined)
 
   return (
     <div
@@ -23,9 +30,14 @@ export default function RunJSNode({ data, selected, id }: NodeProps<RunJSNodeDat
       } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
     >
       {/* Header */}
-      <div className="bg-amber-500 text-white px-4 py-2 rounded-t-lg flex items-center gap-2">
-        <Code2 className="w-4 h-4" />
-        <span className="text-xs font-semibold uppercase tracking-wide">Run JavaScript</span>
+      <div className="bg-amber-500 text-white px-4 py-2 rounded-t-lg flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Code2 className="w-4 h-4" />
+          <span className="text-xs font-semibold uppercase tracking-wide">Run JavaScript</span>
+        </div>
+        {(input !== undefined || output !== undefined) && (
+          <div className="w-2 h-2 bg-white rounded-full" title="Has execution data - Double-click to view" />
+        )}
       </div>
 
       {/* Content */}

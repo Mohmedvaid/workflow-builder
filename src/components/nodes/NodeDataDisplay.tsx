@@ -22,13 +22,22 @@ export default function NodeDataDisplay({ input, output, isRunning }: NodeDataDi
     }
   }
 
+  const hasData = input !== undefined || output !== undefined
+
+  if (!hasData && !isRunning) {
+    return null
+  }
+
   return (
-    <div className="flex items-center gap-1 mt-2">
+    <div className="flex items-center gap-1 mt-2 border-t border-gray-200 pt-2">
       {/* Input Data (Left) */}
       {input !== undefined && (
         <div className="flex-1 relative">
           <button
-            onClick={() => setShowInput(!showInput)}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowInput(!showInput)
+            }}
             className={`w-full text-left px-2 py-1 text-xs rounded border transition-colors ${
               showInput
                 ? 'bg-blue-50 border-blue-300 text-blue-700'
@@ -41,7 +50,7 @@ export default function NodeDataDisplay({ input, output, isRunning }: NodeDataDi
             </div>
           </button>
           {showInput && (
-            <div className="absolute left-0 top-full mt-1 z-20 w-64 bg-white border border-gray-300 rounded-md shadow-lg p-2 max-h-48 overflow-auto">
+            <div className="absolute left-0 top-full mt-1 z-50 w-64 bg-white border border-gray-300 rounded-md shadow-lg p-2 max-h-48 overflow-auto">
               <pre className="text-xs font-mono whitespace-pre-wrap break-words">
                 {formatData(input)}
               </pre>
@@ -61,7 +70,10 @@ export default function NodeDataDisplay({ input, output, isRunning }: NodeDataDi
       {output !== undefined && (
         <div className="flex-1 relative">
           <button
-            onClick={() => setShowOutput(!showOutput)}
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowOutput(!showOutput)
+            }}
             className={`w-full text-left px-2 py-1 text-xs rounded border transition-colors ${
               showOutput
                 ? 'bg-green-50 border-green-300 text-green-700'
@@ -74,7 +86,7 @@ export default function NodeDataDisplay({ input, output, isRunning }: NodeDataDi
             </div>
           </button>
           {showOutput && (
-            <div className="absolute right-0 top-full mt-1 z-20 w-64 bg-white border border-gray-300 rounded-md shadow-lg p-2 max-h-48 overflow-auto">
+            <div className="absolute right-0 top-full mt-1 z-50 w-64 bg-white border border-gray-300 rounded-md shadow-lg p-2 max-h-48 overflow-auto">
               <pre className="text-xs font-mono whitespace-pre-wrap break-words">
                 {formatData(output)}
               </pre>

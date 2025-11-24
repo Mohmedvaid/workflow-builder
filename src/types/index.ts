@@ -35,4 +35,8 @@ export interface Workflow {
   edges: WorkflowEdge[]
   createdAt?: string
   updatedAt?: string
+  timeout?: {
+    hours: number
+    minutes: number
+  }
 }

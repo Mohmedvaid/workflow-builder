@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps } from 'reactflow'
 import type { NodeType } from '@/types'
 import { useExecutionStore } from '@/store/executionStore'
+import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'
 
 interface BaseNodeData {
@@ -28,9 +29,16 @@ export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>
   const colorClass = nodeTypeColors[nodeType]
   const typeLabel = nodeTypeLabels[nodeType]
   const { currentNodeId, nodeInputs, nodeOutputs, isRunning } = useExecutionStore()
+  const { getLatestNodeData } = useExecutionHistoryStore()
   const isCurrentlyRunning = currentNodeId === id && isRunning
-  const input = nodeInputs.get(id)
-  const output = nodeOutputs.get(id)
+  
+  // Get data from current execution first, then from persistent history
+  const currentInput = nodeInputs[id]
+  const currentOutput = nodeOutputs[id]
+  const historyData = getLatestNodeData(id)
+  
+  const input = currentInput !== undefined ? currentInput : (historyData?.input !== undefined ? historyData.input : undefined)
+  const output = currentOutput !== undefined ? currentOutput : (historyData?.output !== undefined ? historyData.output : undefined)
 
   return (
     <div
@@ -42,6 +50,9 @@ export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>
       <div className={`${colorClass} text-white px-4 py-2 rounded-t-lg`}>
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wide">{typeLabel}</span>
+          {(input !== undefined || output !== undefined) && (
+            <div className="w-2 h-2 bg-white rounded-full" title="Has execution data - Double-click to view" />
+          )}
         </div>
       </div>
 

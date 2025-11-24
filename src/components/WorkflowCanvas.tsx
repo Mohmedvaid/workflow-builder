@@ -21,7 +21,7 @@ import RunJSNode from './nodes/RunJSNode'
 import WriteFileNode from './nodes/WriteFileNode'
 import ReadFileNode from './nodes/ReadFileNode'
 import AIModelNode from './nodes/AIModelNode'
-import NodeConfigPanel from './NodeConfigPanel'
+import NodeDataViewer from './NodeDataViewer'
 
 const nodeTypes = {
   default: BaseNode,
@@ -38,20 +38,20 @@ const nodeTypes = {
 
 export default function WorkflowCanvas() {
   const { nodes, edges, setNodes, setEdges } = useWorkflowStore()
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+  const [dataViewerNode, setDataViewerNode] = useState<Node | null>(null)
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      // Close config panel if selected node is being deleted
-      const isSelectedNodeDeleted = changes.some(
-        (change) => change.type === 'remove' && change.id === selectedNode?.id
+      // Close data viewer if node is being deleted
+      const isDataViewerNodeDeleted = changes.some(
+        (change) => change.type === 'remove' && change.id === dataViewerNode?.id
       )
-      if (isSelectedNodeDeleted) {
-        setSelectedNode(null)
+      if (isDataViewerNodeDeleted) {
+        setDataViewerNode(null)
       }
       setNodes(applyNodeChanges(changes, nodes))
     },
-    [nodes, setNodes, selectedNode]
+    [nodes, setNodes, dataViewerNode]
   )
 
   const onEdgesChange: OnEdgesChange = useCallback(
@@ -85,26 +85,30 @@ export default function WorkflowCanvas() {
     []
   )
 
-  const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
-    setSelectedNode(node)
+  const onNodeClick: NodeMouseHandler = useCallback(() => {
+    // Single click does nothing - only double-click opens popup
+  }, [])
+
+  const onNodeDoubleClick: NodeMouseHandler = useCallback((_event, node) => {
+    setDataViewerNode(node)
   }, [])
 
   const onPaneClick = useCallback(() => {
-    setSelectedNode(null)
+    // Pane click handler - can be used for future features
   }, [])
 
-  // Sync selected node with store when nodes update
+  // Sync data viewer node with store when nodes update
   useEffect(() => {
-    if (selectedNode) {
-      const updatedNode = nodes.find((n) => n.id === selectedNode.id)
+    if (dataViewerNode) {
+      const updatedNode = nodes.find((n) => n.id === dataViewerNode.id)
       if (updatedNode) {
-        setSelectedNode(updatedNode)
+        setDataViewerNode(updatedNode)
       }
     }
-  }, [nodes, selectedNode?.id])
+  }, [nodes, dataViewerNode?.id])
 
   return (
-    <div className="w-full h-full relative">
+    <div className="w-full h-full relative" style={{ backgroundColor: '#f9fafb' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -112,6 +116,7 @@ export default function WorkflowCanvas() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         defaultViewport={defaultViewport}
@@ -121,7 +126,12 @@ export default function WorkflowCanvas() {
         attributionPosition="bottom-left"
         connectionLineStyle={{ strokeWidth: 2, stroke: '#6b7280' }}
       >
-        <Background color="#e5e7eb" gap={16} />
+        <Background 
+          pattern="dots" 
+          gap={12} 
+          size={1}
+          color="#d1d5db"
+        />
         <Controls />
         <MiniMap
           nodeColor={(node: Node) => {
@@ -142,8 +152,8 @@ export default function WorkflowCanvas() {
           maskColor="rgba(0, 0, 0, 0.1)"
         />
       </ReactFlow>
-      {selectedNode && (
-        <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} />
+      {dataViewerNode && (
+        <NodeDataViewer node={dataViewerNode} onClose={() => setDataViewerNode(null)} />
       )}
     </div>
   )

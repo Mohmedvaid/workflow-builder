@@ -1,26 +1,23 @@
-import { Download, Upload, FileText, Trash2, Play, Plus } from 'lucide-react'
+import { Upload, FileText, Play } from 'lucide-react'
 import { useWorkflowStore } from '@/store/workflowStore'
 import { useExecutionStore } from '@/store/executionStore'
 import { useRunHistoryStore } from '@/store/runHistoryStore'
-import { downloadWorkflow, readWorkflowFile } from '@/utils/workflowUtils'
+import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
+import { readWorkflowFile } from '@/utils/workflowUtils'
 import { executeWorkflow } from '@/utils/workflowExecutor'
 import { useRef } from 'react'
 
-interface HeaderProps {
-  onToggleNodePalette?: () => void
-}
+interface HeaderProps {}
 
-export default function Header({ onToggleNodePalette }: HeaderProps) {
-  const { exportWorkflow, importWorkflow, clearWorkflow, workflowName, setWorkflowName } =
+export default function Header({}: HeaderProps) {
+  const { exportWorkflow, importWorkflow, workflowName, setWorkflowName, nodes } =
     useWorkflowStore()
   const { isRunning, clearExecution } = useExecutionStore()
   const { addRun } = useRunHistoryStore()
+  const executionHistoryStore = useExecutionHistoryStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleSave = () => {
-    const workflow = exportWorkflow()
-    downloadWorkflow(workflow)
-  }
+  const nodeCount = nodes.length
+  const maxNodes = 50
 
   const handleLoad = () => {
     fileInputRef.current?.click()
@@ -40,25 +37,44 @@ export default function Header({ onToggleNodePalette }: HeaderProps) {
     }
   }
 
-  const handleClear = () => {
-    if (confirm('Are you sure you want to clear the workflow? This action cannot be undone.')) {
-      clearWorkflow()
-    }
-  }
 
   const handleRun = async () => {
     const startTime = Date.now()
     try {
       const workflow = exportWorkflow()
       const executionStore = useExecutionStore.getState()
+      
+      // Start execution in history store
+      const executionId = executionHistoryStore.startExecution(workflow.name)
+      
+      // Track current execution data for preserving input/output
+      let currentExecutionData: Record<string, { input?: unknown; output?: unknown }> = {}
+      
       const result = await executeWorkflow(workflow, {
         startExecution: executionStore.startExecution,
         stopExecution: executionStore.stopExecution,
         setCurrentNode: executionStore.setCurrentNode,
-        setNodeInput: executionStore.setNodeInput,
-        setNodeOutput: executionStore.setNodeOutput,
+        setNodeInput: (nodeId: string, input: unknown) => {
+          executionStore.setNodeInput(nodeId, input)
+          // Get existing output from current execution if any
+          const existingOutput = currentExecutionData[nodeId]?.output
+          executionHistoryStore.saveNodeData(nodeId, input, existingOutput)
+          // Update tracking
+          currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], input }
+        },
+        setNodeOutput: (nodeId: string, output: unknown) => {
+          executionStore.setNodeOutput(nodeId, output)
+          // Get existing input from current execution if any
+          const existingInput = currentExecutionData[nodeId]?.input
+          executionHistoryStore.saveNodeData(nodeId, existingInput, output)
+          // Update tracking
+          currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], output }
+        },
       })
       const executionTime = Date.now() - startTime
+      
+      // Finish execution in history store
+      executionHistoryStore.finishExecution()
 
       // Save to run history
       addRun({
@@ -116,6 +132,18 @@ export default function Header({ onToggleNodePalette }: HeaderProps) {
           className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           placeholder="Workflow name"
         />
+        <div className="h-6 w-px bg-gray-300" />
+        <div
+          className={`px-3 py-1.5 text-xs font-medium rounded-md ${
+            nodeCount >= maxNodes
+              ? 'bg-red-100 text-red-700'
+              : nodeCount >= maxNodes * 0.8
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-gray-100 text-gray-700'
+          }`}
+        >
+          {nodeCount}/{maxNodes} nodes
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -134,28 +162,6 @@ export default function Header({ onToggleNodePalette }: HeaderProps) {
         >
           <Upload className="w-4 h-4" />
           Load
-        </button>
-        <button
-          onClick={handleSave}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
-        >
-          <Download className="w-4 h-4" />
-          Save
-        </button>
-        <button
-          onClick={handleClear}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
-        >
-          <Trash2 className="w-4 h-4" />
-          Clear
-        </button>
-        <div className="h-6 w-px bg-gray-300" />
-        <button
-          onClick={onToggleNodePalette}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Node
         </button>
       </div>
 
