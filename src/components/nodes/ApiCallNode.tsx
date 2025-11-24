@@ -4,6 +4,7 @@ import { useExecutionStore } from '@/store/executionStore'
 import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'
 import LoadingSpinner from '../LoadingSpinner'
+import NodeActions from './NodeActions'
 
 interface ApiCallNodeData {
   label: string
@@ -20,6 +21,8 @@ export default function ApiCallNode({ data, selected, id }: NodeProps<ApiCallNod
   const { getLatestNodeData } = useExecutionHistoryStore()
   const isCurrentlyRunning = currentNodeId === id && isRunning
   const hasError = nodeErrors[id] !== undefined
+  const disabled = data.disabled === true
+  const workflowId = new URLSearchParams(window.location.search).get('workflowId')
   
   const currentInput = nodeInputs[id]
   const currentOutput = nodeOutputs[id]
@@ -30,14 +33,21 @@ export default function ApiCallNode({ data, selected, id }: NodeProps<ApiCallNod
 
   return (
     <div
-      className={`w-[200px] bg-white rounded-lg shadow-md border-2 ${
+      className={`w-[200px] bg-white rounded-lg shadow-md border-2 relative ${
         hasError
           ? 'border-red-300 bg-red-50'
-          : selected
-            ? 'border-primary-500'
-            : 'border-gray-200'
+          : disabled
+            ? 'border-gray-300 bg-gray-50 opacity-60'
+            : selected
+              ? 'border-primary-500'
+              : 'border-gray-200'
       } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${hasError ? 'ring-2 ring-red-300 ring-offset-1' : ''} transition-all`}
     >
+      {/* Floating Action Icons */}
+      <div className="absolute -top-5 -right-1 z-10">
+        <NodeActions nodeId={id} nodeType="api-call" disabled={disabled} workflowId={workflowId} />
+      </div>
+
       {/* Header */}
       <div className="bg-indigo-500 text-white px-4 py-2 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center gap-2">

@@ -2,16 +2,12 @@
 
 export type NodeType =
   | 'trigger'
-  | 'action'
   | 'condition'
-  | 'transform'
   | 'api-call'
   | 'run-js'
-  | 'write-file'
-  | 'read-file'
+  | 'file'
   | 'ai-chat'
   | 'ai-asset'
-  | 'ai-agent'
 
 export interface WorkflowNode {
   id: string

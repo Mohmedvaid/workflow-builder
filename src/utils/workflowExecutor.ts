@@ -65,6 +65,82 @@ export async function executeWorkflow(
 }
 
 /**
+ * Executes a single node by ID
+ * Used for individual node execution from the UI
+ */
+export async function executeSingleNode(
+  nodeId: string,
+  workflow: Workflow,
+  environmentVariables: Record<string, string>,
+  executionStore: ExecutionStore,
+  executionHistoryStore: {
+    startExecution: (name: string) => string
+    saveNodeData: (nodeId: string, input?: unknown, output?: unknown) => void
+    finishExecution: () => void
+  }
+): Promise<void> {
+  const node = workflow.nodes.find((n) => n.id === nodeId)
+  if (!node) {
+    throw new Error(`Node with id ${nodeId} not found`)
+  }
+
+  // Skip if node is disabled
+  if (node.data.disabled === true) {
+    return
+  }
+
+  // Get input from previous node if connected
+  const incomingEdges = workflow.edges.filter((edge) => edge.target === nodeId)
+  let input: unknown = null
+  if (incomingEdges.length > 0) {
+    // For single node execution, we'll use null input
+    // In a real scenario, you might want to execute the chain up to this node
+    input = null
+  }
+
+  const context: ExecutionContext = {
+    nodeOutputs: new Map(),
+    errors: [],
+  }
+
+  try {
+    executionStore.startExecution()
+    const executionId = executionHistoryStore.startExecution(workflow.name)
+
+    // Track execution data
+    let currentExecutionData: Record<string, { input?: unknown; output?: unknown }> = {}
+
+    // Create a wrapper execution store that also saves to history
+    const wrappedExecutionStore: ExecutionStore = {
+      ...executionStore,
+      setNodeInput: (nodeId: string, input: unknown) => {
+        executionStore.setNodeInput(nodeId, input)
+        const existingOutput = currentExecutionData[nodeId]?.output
+        executionHistoryStore.saveNodeData(nodeId, input, existingOutput)
+        currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], input }
+      },
+      setNodeOutput: (nodeId: string, output: unknown) => {
+        executionStore.setNodeOutput(nodeId, output)
+        const existingInput = currentExecutionData[nodeId]?.input
+        executionHistoryStore.saveNodeData(nodeId, existingInput, output)
+        currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], output }
+      },
+    }
+
+    // Execute just this node (don't execute connected nodes)
+    await executeNode(node, workflow, context, input, wrappedExecutionStore, undefined, environmentVariables)
+
+    executionHistoryStore.finishExecution()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    executionStore.setNodeError(nodeId, errorMessage)
+    throw error
+  } finally {
+    executionStore.stopExecution()
+  }
+}
+
+/**
  * Gets all nodes reachable from a starting node using BFS
  * This ensures we only execute nodes connected to the trigger
  */
@@ -108,6 +184,25 @@ async function executeNode(
   if (reachableNodes && !reachableNodes.has(node.id)) {
     return null
   }
+
+  // Skip disabled nodes
+  if (node.data.disabled === true) {
+    // Pass input through to next nodes
+    if (executionStore) {
+      executionStore.setNodeOutput(node.id, input)
+    }
+    context.nodeOutputs.set(node.id, input)
+    
+    // Still execute connected nodes with the input
+    const outgoingEdges = workflow.edges.filter((edge) => edge.source === node.id)
+    for (const edge of outgoingEdges) {
+      const targetNode = workflow.nodes.find((n) => n.id === edge.target)
+      if (targetNode) {
+        await executeNode(targetNode, workflow, context, input, executionStore, reachableNodes, environmentVariables)
+      }
+    }
+    return input
+  }
   try {
     // Get node-specific key-value pairs
     const nodeKeyValuePairs = (node.data.keyValuePairs as Record<string, string>) || {}
@@ -134,36 +229,24 @@ async function executeNode(
       case 'trigger':
         output = await executeTriggerNode(nodeWithResolvedData, input)
         break
-      case 'action':
-        output = await executeActionNode(nodeWithResolvedData, input)
-        break
       case 'condition':
         output = await executeConditionNode(nodeWithResolvedData, input)
-        break
-      case 'transform':
-        output = await executeTransformNode(nodeWithResolvedData, input)
         break
       case 'api-call':
         output = await executeApiCallNode(nodeWithResolvedData, input)
         break
       case 'run-js':
-        output = await executeRunJSNode(nodeWithResolvedData, input)
+        // For JS nodes, we need to resolve references in code but pass environment variables
+        output = await executeRunJSNode(nodeWithResolvedData, input, environmentVariables)
         break
-      case 'write-file':
-        output = await executeWriteFileNode(nodeWithResolvedData, input)
-        break
-      case 'read-file':
-        output = await executeReadFileNode(nodeWithResolvedData, input)
+      case 'file':
+        output = await executeFileNode(nodeWithResolvedData, input)
         break
       case 'ai-chat':
         output = await executeAIChatNode(nodeWithResolvedData, input, environmentVariables)
         break
       case 'ai-asset':
         output = await executeAIAssetNode(nodeWithResolvedData, input, environmentVariables)
-        break
-        break
-      case 'ai-agent':
-        output = await executeAIAgentNode(nodeWithResolvedData, input)
         break
       default:
         output = input
@@ -178,12 +261,15 @@ async function executeNode(
       executionStore.setNodeOutput(node.id, jsonOutput)
     }
 
-    // Execute connected nodes
-    const outgoingEdges = workflow.edges.filter((edge) => edge.source === node.id)
-    for (const edge of outgoingEdges) {
-      const targetNode = workflow.nodes.find((n) => n.id === edge.target)
-      if (targetNode) {
-        await executeNode(targetNode, workflow, context, jsonOutput, executionStore, reachableNodes, environmentVariables)
+    // Execute connected nodes (only if reachableNodes is defined - i.e., in full workflow execution)
+    // For single node execution (reachableNodes is undefined), we skip executing connected nodes
+    if (reachableNodes !== undefined) {
+      const outgoingEdges = workflow.edges.filter((edge) => edge.source === node.id)
+      for (const edge of outgoingEdges) {
+        const targetNode = workflow.nodes.find((n) => n.id === edge.target)
+        if (targetNode && !targetNode.data.disabled) {
+          await executeNode(targetNode, workflow, context, jsonOutput, executionStore, reachableNodes, environmentVariables)
+        }
       }
     }
 
@@ -207,14 +293,6 @@ async function executeTriggerNode(node: WorkflowNode, _input: unknown): Promise<
   })
 }
 
-async function executeActionNode(node: WorkflowNode, input: unknown): Promise<unknown> {
-  const inputObj = typeof input === 'object' && input !== null ? input : {}
-  return ensureJSONOutput({
-    ...(inputObj as Record<string, unknown>),
-    action: node.data.label || 'Action executed',
-  })
-}
-
 async function executeConditionNode(node: WorkflowNode, input: unknown): Promise<unknown> {
   // Simple condition evaluation - in real implementation, this would evaluate the condition
   const condition = (node.data.condition as string) || 'true'
@@ -225,14 +303,6 @@ async function executeConditionNode(node: WorkflowNode, input: unknown): Promise
   } catch {
     return ensureJSONOutput({ condition: true, input })
   }
-}
-
-async function executeTransformNode(node: WorkflowNode, input: unknown): Promise<unknown> {
-  return ensureJSONOutput({
-    transformed: true,
-    original: input,
-    transform: node.data.label,
-  })
 }
 
 async function executeApiCallNode(node: WorkflowNode, input: unknown): Promise<unknown> {
@@ -266,14 +336,74 @@ async function executeApiCallNode(node: WorkflowNode, input: unknown): Promise<u
   }
 }
 
-async function executeRunJSNode(node: WorkflowNode, input: unknown): Promise<unknown> {
-  const code = (node.data.code as string) || ''
+async function executeRunJSNode(
+  node: WorkflowNode,
+  input: unknown,
+  environmentVariables?: Record<string, string>
+): Promise<unknown> {
+  let code = (node.data.code as string) || ''
 
   if (!code.trim()) {
     throw new Error('JavaScript code is required')
   }
 
   try {
+    // Resolve data references in the code string, but handle them specially for JavaScript
+    // We need to properly escape values when replacing $json references in code
+    const jsonPattern = /\$json(\.[a-zA-Z0-9_]+)+/g
+    const envPattern = /\$env\.[a-zA-Z0-9_]+/g
+    const nodePattern = /\$node\.[a-zA-Z0-9_]+/g
+    
+    // Replace $json references with proper JavaScript access
+    code = code.replace(jsonPattern, (match) => {
+      const path = match.replace('$json', '')
+      const keys = path.split('.').filter(Boolean)
+      
+      let value: unknown = input
+      for (const key of keys) {
+        if (value && typeof value === 'object' && key in value) {
+          value = (value as Record<string, unknown>)[key]
+        } else {
+          return 'undefined'
+        }
+      }
+      
+      // Properly escape the value for JavaScript
+      if (value === null || value === undefined) {
+        return 'null'
+      } else if (typeof value === 'string') {
+        // Escape the string properly for JavaScript using JSON.stringify
+        return JSON.stringify(value)
+      } else if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value)
+      } else {
+        // For objects/arrays, stringify them
+        return JSON.stringify(value)
+      }
+    })
+    
+    // Replace $env references
+    code = code.replace(envPattern, (match) => {
+      const varName = match.replace('$env.', '')
+      const value = environmentVariables?.[varName]
+      if (value === undefined) {
+        return 'undefined'
+      }
+      return JSON.stringify(value)
+    })
+    
+    // Replace $node references (these should be resolved before execution via resolveDataReferences)
+    // But if they're still in the code, handle them
+    const nodeKeyValuePairs = (node.data.keyValuePairs as Record<string, string>) || {}
+    code = code.replace(nodePattern, (match) => {
+      const key = match.replace('$node.', '')
+      const value = nodeKeyValuePairs[key]
+      if (value === undefined) {
+        return 'undefined'
+      }
+      return JSON.stringify(value)
+    })
+    
     // Create a safe execution context
     const func = new Function('input', code)
     const result = func(input)
@@ -283,41 +413,86 @@ async function executeRunJSNode(node: WorkflowNode, input: unknown): Promise<unk
   }
 }
 
-async function executeWriteFileNode(node: WorkflowNode, input: unknown): Promise<unknown> {
+async function executeFileNode(node: WorkflowNode, input: unknown): Promise<unknown> {
+  const operation = (node.data.operation as 'read' | 'write') || 'read'
   const filePath = (node.data.filePath as string) || ''
-  const content = (node.data.content as string) || JSON.stringify(input, null, 2)
+  const extension = (node.data.extension as string) || ''
 
   if (!filePath) {
     throw new Error('File path is required')
   }
 
-  // In browser, we can only download files, not write to arbitrary paths
-  // This is a limitation of browser security
-  const blob = new Blob([content], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filePath.split('/').pop() || 'file.txt'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-
-  return ensureJSONOutput({ success: true, filePath, message: 'File downloaded (browser limitation)' })
-}
-
-async function executeReadFileNode(node: WorkflowNode, _input: unknown): Promise<unknown> {
-  const filePath = (node.data.filePath as string) || ''
-
-  if (!filePath) {
-    throw new Error('File path is required')
+  // Validate file path
+  const invalidChars = /[<>:"|?*\x00-\x1f]/
+  if (invalidChars.test(filePath)) {
+    throw new Error('File path contains invalid characters')
   }
 
-  // Browser security prevents reading arbitrary files
-  // In a real implementation, this would require user file input
-  throw new Error(
-    'File reading is not supported in browser. Use a file input node or server-side execution.'
-  )
+  if (filePath.includes('..')) {
+    throw new Error('Path traversal (..) is not allowed')
+  }
+
+  // Ensure file path has extension if one is specified
+  let finalPath = filePath
+  if (extension && !filePath.endsWith(extension)) {
+    // Remove any existing extension and add the selected one
+    const pathWithoutExt = filePath.replace(/\.[^/.]+$/, '')
+    finalPath = pathWithoutExt + extension
+  }
+
+  if (operation === 'read') {
+    // Browser security prevents reading arbitrary files
+    // In a real implementation, this would require user file input
+    throw new Error(
+      'File reading is not supported in browser. Use a file input node or server-side execution.'
+    )
+  } else {
+    // Write operation - download file in browser
+    const content = (node.data.content as string) || JSON.stringify(input, null, 2)
+
+    // Determine MIME type based on extension
+    const mimeTypes: Record<string, string> = {
+      '.txt': 'text/plain',
+      '.json': 'application/json',
+      '.csv': 'text/csv',
+      '.xml': 'application/xml',
+      '.yaml': 'text/yaml',
+      '.yml': 'text/yaml',
+      '.md': 'text/markdown',
+      '.html': 'text/html',
+      '.css': 'text/css',
+      '.js': 'application/javascript',
+      '.ts': 'text/typescript',
+      '.py': 'text/x-python',
+      '.java': 'text/x-java-source',
+      '.cpp': 'text/x-c++src',
+      '.c': 'text/x-csrc',
+      '.log': 'text/plain',
+      '.conf': 'text/plain',
+      '.ini': 'text/plain',
+      '.env': 'text/plain',
+    }
+
+    const mimeType = extension ? mimeTypes[extension] || 'text/plain' : 'text/plain'
+
+    const blob = new Blob([content], { type: mimeType })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = finalPath.split('/').pop() || 'file.txt'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    return ensureJSONOutput({
+      success: true,
+      filePath: finalPath,
+      extension,
+      operation: 'write',
+      message: 'File downloaded (browser limitation)',
+    })
+  }
 }
 
 /**
@@ -472,11 +647,27 @@ async function executeAIAssetNode(
 async function executeTTS(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
   const model = (node.data.model as string) || 'tts-1'
   const text = (node.data.input as string) || ''
-  const voice = (node.data.voice as string) || 'alloy'
-  const speed = (node.data.speed as number) ?? 1.0
+  const voice = (node.data.voice as string) || 'default'
+  const format = (node.data.format as string) || undefined
+  const speed = (node.data.speed as string) ? parseFloat(node.data.speed as string) : undefined
+  const emotion = (node.data.emotion as string) || undefined
 
   if (!text) {
     throw new Error('Text input is required for TTS')
+  }
+
+  const payload: Record<string, unknown> = {
+    model,
+    input: text,
+    voice,
+  }
+
+  // Add optional parameters only if they are set
+  if (format) {
+    payload.response_format = format
+  }
+  if (speed !== undefined) {
+    payload.speed = speed
   }
 
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -485,12 +676,7 @@ async function executeTTS(node: WorkflowNode, apiKey: string, input: unknown): P
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      input: text,
-      voice,
-      speed,
-    }),
+    body: JSON.stringify(payload),
   })
 
   if (!response.ok) {
@@ -507,7 +693,9 @@ async function executeTTS(node: WorkflowNode, apiKey: string, input: unknown): P
     model,
     audioUrl,
     voice,
-    speed,
+    format: format || 'mp3',
+    speed: speed || 1.0,
+    emotion: emotion || 'neutral',
     text,
   })
 }
@@ -700,53 +888,6 @@ async function executeEmbedding(node: WorkflowNode, apiKey: string, input: unkno
   })
 }
 
-async function executeAIAgentNode(node: WorkflowNode, input: unknown): Promise<unknown> {
-  const model = (node.data.model as string) || 'gpt-4'
-  const systemPrompt = (node.data.systemPrompt as string) || ''
-  const temperature = (node.data.temperature as number) ?? 0.7
-  const maxTokens = (node.data.maxTokens as number) ?? 2000
-  const toolsStr = (node.data.tools as string) || '[]'
-
-  if (!systemPrompt) {
-    throw new Error('System instructions are required for AI Agent')
-  }
-
-  // Parse tools
-  let tools: Array<{ name: string; description: string }> = []
-  try {
-    tools = JSON.parse(toolsStr)
-  } catch {
-    // Invalid JSON, use empty array
-    tools = []
-  }
-
-  // Replace {{input}} placeholder with actual input data
-  const processedSystemPrompt = systemPrompt.replace(/\{\{input\}\}/g, JSON.stringify(input))
-
-  // Note: This is a placeholder. In production, you would:
-  // 1. Call the AI API with system prompt and tools
-  // 2. Handle function calling/tool usage
-  // 3. Maintain conversation context
-  // 4. Execute tools and return results
-  // 5. Chain multiple tool calls if needed
-  
-  return ensureJSONOutput({
-    success: false,
-    message: 'AI Agent execution requires API configuration. This is a placeholder response.',
-    agent: {
-      model,
-      systemPrompt: processedSystemPrompt,
-      tools: tools.length > 0 ? tools : 'No tools configured',
-      temperature,
-      maxTokens,
-    },
-    response: {
-      reasoning: 'AI Agent would analyze the input, decide on actions, use available tools, and return results.',
-      actions: tools.length > 0 ? `Agent can use ${tools.length} tool(s): ${tools.map(t => t.name).join(', ')}` : 'No tools available',
-      output: 'Agent output would appear here after execution',
-    },
-  })
-}
 
 /**
  * Helper function to parse JSON safely

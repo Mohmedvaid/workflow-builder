@@ -18,26 +18,20 @@ import { useWorkflowStore } from '@/store/workflowStore'
 import BaseNode from './nodes/BaseNode'
 import ApiCallNode from './nodes/ApiCallNode'
 import RunJSNode from './nodes/RunJSNode'
-import WriteFileNode from './nodes/WriteFileNode'
-import ReadFileNode from './nodes/ReadFileNode'
+import FileNode from './nodes/FileNode'
 import AIChatNode from './nodes/AIChatNode'
 import AIAssetNode from './nodes/AIAssetNode'
-import AIAgentNode from './nodes/AIAgentNode'
 import NodeDataViewer from './NodeDataViewer'
 
 const nodeTypes = {
   default: BaseNode,
   trigger: BaseNode,
-  action: BaseNode,
   condition: BaseNode,
-  transform: BaseNode,
   'api-call': ApiCallNode,
   'run-js': RunJSNode,
-  'write-file': WriteFileNode,
-  'read-file': ReadFileNode,
+  'file': FileNode,
   'ai-chat': AIChatNode,
   'ai-asset': AIAssetNode,
-  'ai-agent': AIAgentNode,
 }
 
 export default function WorkflowCanvas() {
@@ -139,16 +133,13 @@ export default function WorkflowCanvas() {
         <Controls />
         <MiniMap
           nodeColor={(node: Node) => {
-            const type = (node.data as { type?: string })?.type || 'action'
+            const type = (node.data as { type?: string })?.type || 'trigger'
             const colors: Record<string, string> = {
               trigger: '#10b981',
-              action: '#3b82f6',
               condition: '#eab308',
-              transform: '#a855f7',
               'api-call': '#6366f1',
               'run-js': '#f59e0b',
-              'write-file': '#14b8a6',
-              'read-file': '#06b6d4',
+              'file': '#14b8a6',
               'ai-chat': '#3b82f6',
               'ai-asset': '#a855f7',
             }

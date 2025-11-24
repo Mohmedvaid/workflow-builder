@@ -101,7 +101,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       name: state.workflowName,
       nodes: state.nodes.map((node) => ({
         id: node.id,
-        type: (node.type || 'action') as WorkflowNode['type'],
+        type: (node.type || 'trigger') as WorkflowNode['type'],
         position: node.position,
         data: node.data,
       })),

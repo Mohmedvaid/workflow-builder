@@ -136,33 +136,79 @@ export default function AIAssetConfig({ data, onUpdate }: AIAssetConfigProps) {
             </label>
             <select
               id="ai-tts-voice"
-              value={(data.voice as string) || 'alloy'}
+              value={(data.voice as string) || 'default'}
               onChange={(e) => onUpdate('voice', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               <option value="alloy">Alloy</option>
-              <option value="echo">Echo</option>
-              <option value="fable">Fable</option>
-              <option value="onyx">Onyx</option>
+              <option value="verse">Verse</option>
               <option value="nova">Nova</option>
               <option value="shimmer">Shimmer</option>
+              <option value="default">Default</option>
             </select>
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="ai-tts-format" className="block text-sm font-medium text-gray-700 mb-1">
+                Format (optional)
+              </label>
+              <select
+                id="ai-tts-format"
+                value={(data.format as string) || ''}
+                onChange={(e) => onUpdate('format', e.target.value || undefined)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="">Default (mp3)</option>
+                <option value="mp3">MP3</option>
+                <option value="opus">Opus</option>
+                <option value="aac">AAC</option>
+                <option value="flac">FLAC</option>
+                <option value="wav">WAV</option>
+                <option value="pcm">PCM</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="ai-tts-speed" className="block text-sm font-medium text-gray-700 mb-1">
+                Speed (optional)
+              </label>
+              <select
+                id="ai-tts-speed"
+                value={(data.speed as string) || ''}
+                onChange={(e) => onUpdate('speed', e.target.value || undefined)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="">Default (1.0)</option>
+                <option value="0.25">0.25x (Very Slow)</option>
+                <option value="0.5">0.5x (Slow)</option>
+                <option value="0.75">0.75x (Slightly Slow)</option>
+                <option value="1.0">1.0x (Normal)</option>
+                <option value="1.25">1.25x (Slightly Fast)</option>
+                <option value="1.5">1.5x (Fast)</option>
+                <option value="1.75">1.75x (Very Fast)</option>
+                <option value="2.0">2.0x (Extremely Fast)</option>
+              </select>
+            </div>
+          </div>
           <div>
-            <label htmlFor="ai-tts-speed" className="block text-sm font-medium text-gray-700 mb-1">
-              Speed
+            <label htmlFor="ai-tts-emotion" className="block text-sm font-medium text-gray-700 mb-1">
+              Emotion (optional)
             </label>
-            <input
-              id="ai-tts-speed"
-              type="number"
-              min="0.25"
-              max="4.0"
-              step="0.25"
-              value={(data.speed as number) ?? 1.0}
-              onChange={(e) => onUpdate('speed', parseFloat(e.target.value) || 1.0)}
+            <select
+              id="ai-tts-emotion"
+              value={(data.emotion as string) || ''}
+              onChange={(e) => onUpdate('emotion', e.target.value || undefined)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-            <p className="text-xs text-gray-500 mt-1">0.25 - 4.0 (default: 1.0)</p>
+            >
+              <option value="">None (Neutral)</option>
+              <option value="happy">Happy</option>
+              <option value="sad">Sad</option>
+              <option value="angry">Angry</option>
+              <option value="excited">Excited</option>
+              <option value="calm">Calm</option>
+              <option value="friendly">Friendly</option>
+              <option value="serious">Serious</option>
+              <option value="whisper">Whisper</option>
+            </select>
           </div>
         </>
       )}

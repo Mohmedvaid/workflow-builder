@@ -247,16 +247,12 @@ function App() {
     const getLabel = (nodeType: NodeType): string => {
       const labels: Record<NodeType, string> = {
         trigger: 'Trigger',
-        action: 'Action',
         condition: 'Condition',
-        transform: 'Transform',
         'api-call': 'API Call',
         'run-js': 'Run JavaScript',
-        'write-file': 'Write File',
-        'read-file': 'Read File',
+        'file': 'File',
         'ai-chat': 'AI Chat',
         'ai-asset': 'AI Asset',
-        'ai-agent': 'AI Agent',
       }
       return labels[nodeType] || 'Node'
     }

@@ -6,11 +6,9 @@ import { useWorkflowStore } from '@/store/workflowStore'
 import type { Node } from 'reactflow'
 import ApiCallConfig from './configs/ApiCallConfig'
 import RunJSConfig from './configs/RunJSConfig'
-import WriteFileConfig from './configs/WriteFileConfig'
-import ReadFileConfig from './configs/ReadFileConfig'
+import FileConfig from './configs/FileConfig'
 import AIChatConfig from './configs/AIChatConfig'
 import AIAssetConfig from './configs/AIAssetConfig'
-import AIAgentConfig from './configs/AIAgentConfig'
 import DataReferenceHelper from './DataReferenceHelper'
 
 interface NodeDataViewerProps {
@@ -50,7 +48,7 @@ export default function NodeDataViewer({ node, onClose }: NodeDataViewerProps) {
   const input = currentInput !== undefined ? currentInput : (historyData?.input !== undefined ? historyData.input : undefined)
   const output = currentOutput !== undefined ? currentOutput : (historyData?.output !== undefined ? historyData.output : undefined)
   const hasData = input !== undefined || output !== undefined
-  const nodeType = (editedNodeData.type as string) || (node.data.type as string) || 'action'
+  const nodeType = (editedNodeData.type as string) || (node.data.type as string) || 'trigger'
 
   const handleUpdate = (field: string, value: unknown) => {
     setEditedNodeData((prev) => ({ ...prev, [field]: value }))
@@ -253,16 +251,12 @@ export default function NodeDataViewer({ node, onClose }: NodeDataViewerProps) {
                       <ApiCallConfig data={editedNodeData} onUpdate={handleUpdate} />
                     )}
                     {nodeType === 'run-js' && <RunJSConfig data={editedNodeData} onUpdate={handleUpdate} />}
-                    {nodeType === 'write-file' && (
-                      <WriteFileConfig data={editedNodeData} onUpdate={handleUpdate} />
-                    )}
-                    {nodeType === 'read-file' && (
-                      <ReadFileConfig data={editedNodeData} onUpdate={handleUpdate} />
+                    {nodeType === 'file' && (
+                      <FileConfig data={editedNodeData} onUpdate={handleUpdate} />
                     )}
                     {nodeType === 'ai-chat' && <AIChatConfig data={editedNodeData} onUpdate={handleUpdate} />}
                     {nodeType === 'ai-asset' && <AIAssetConfig data={editedNodeData} onUpdate={handleUpdate} />}
-                    {nodeType === 'ai-agent' && <AIAgentConfig data={editedNodeData} onUpdate={handleUpdate} />}
-                    {!['api-call', 'run-js', 'write-file', 'read-file', 'ai-chat', 'ai-asset', 'ai-agent'].includes(nodeType) && (
+                    {!['api-call', 'run-js', 'file', 'ai-chat', 'ai-asset'].includes(nodeType) && (
                       <div>
                         <label
                           htmlFor="node-description"
