@@ -1,4 +1,4 @@
-import type { Workflow, WorkflowNode, WorkflowEdge } from '@/types'
+import type { Workflow, WorkflowNode } from '@/types'
 import { resolveDataReferences, ensureJSONOutput } from './dataReference'
 import { useEnvironmentStore } from '@/store/environmentStore'
 
@@ -105,7 +105,7 @@ export async function executeSingleNode(
 
   try {
     executionStore.startExecution()
-    const executionId = executionHistoryStore.startExecution(workflow.name)
+    executionHistoryStore.startExecution(workflow.name)
 
     // Track execution data
     let currentExecutionData: Record<string, { input?: unknown; output?: unknown }> = {}
@@ -305,7 +305,7 @@ async function executeConditionNode(node: WorkflowNode, input: unknown): Promise
   }
 }
 
-async function executeApiCallNode(node: WorkflowNode, input: unknown): Promise<unknown> {
+async function executeApiCallNode(node: WorkflowNode, _input: unknown): Promise<unknown> {
   const url = (node.data.url as string) || ''
   const method = (node.data.method as string) || 'GET'
   const headers = parseJSON((node.data.headers as string) || '{}', {})
@@ -520,7 +520,7 @@ function getOpenAIAPIKey(environmentVariables?: Record<string, string>): string 
  */
 async function executeAIChatNode(
   node: WorkflowNode,
-  input: unknown,
+  _input: unknown,
   environmentVariables?: Record<string, string>
 ): Promise<unknown> {
   const apiKey = getOpenAIAPIKey(environmentVariables)
@@ -644,7 +644,7 @@ async function executeAIAssetNode(
 /**
  * Executes Text-to-Speech API call
  */
-async function executeTTS(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+async function executeTTS(node: WorkflowNode, apiKey: string, _input: unknown): Promise<unknown> {
   const model = (node.data.model as string) || 'tts-1'
   const text = (node.data.input as string) || ''
   const voice = (node.data.voice as string) || 'default'
@@ -703,7 +703,7 @@ async function executeTTS(node: WorkflowNode, apiKey: string, input: unknown): P
 /**
  * Executes Speech-to-Text API call
  */
-async function executeSTT(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+async function executeSTT(node: WorkflowNode, apiKey: string, _input: unknown): Promise<unknown> {
   const model = (node.data.model as string) || 'whisper-1'
   const audioUrl = (node.data.audioUrl as string) || ''
   const language = (node.data.language as string) || undefined
@@ -753,7 +753,7 @@ async function executeSTT(node: WorkflowNode, apiKey: string, input: unknown): P
 /**
  * Executes Image Generation API call
  */
-async function executeImageGeneration(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+async function executeImageGeneration(node: WorkflowNode, apiKey: string, _input: unknown): Promise<unknown> {
   const model = (node.data.model as string) || 'dall-e-2'
   const prompt = (node.data.prompt as string) || ''
   const size = (node.data.size as string) || '1024x1024'
@@ -805,7 +805,7 @@ async function executeImageGeneration(node: WorkflowNode, apiKey: string, input:
 /**
  * Executes Video Generation API call (Sora)
  */
-async function executeVideoGeneration(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+async function executeVideoGeneration(node: WorkflowNode, apiKey: string, _input: unknown): Promise<unknown> {
   const model = (node.data.model as string) || 'sora-2'
   const prompt = (node.data.prompt as string) || ''
   const duration = (node.data.duration as number) ?? 10
@@ -846,7 +846,7 @@ async function executeVideoGeneration(node: WorkflowNode, apiKey: string, input:
 /**
  * Executes Embedding API call
  */
-async function executeEmbedding(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+async function executeEmbedding(node: WorkflowNode, apiKey: string, _input: unknown): Promise<unknown> {
   const model = (node.data.model as string) || 'text-embedding-3-small'
   const text = (node.data.input as string) || ''
   const dimensions = (node.data.dimensions as number) || undefined

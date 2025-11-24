@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { Node, Edge } from 'reactflow'
-import type { Workflow, WorkflowNode, WorkflowEdge } from '@/types'
+import type { Workflow, WorkflowNode } from '@/types'
 
 interface WorkflowState {
   nodes: Node[]

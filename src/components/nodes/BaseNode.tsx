@@ -76,7 +76,7 @@ export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>
       {/* Content */}
       <div className="px-4 py-3">
         <div className="text-sm font-medium text-gray-900 truncate">{data.label || 'Untitled Node'}</div>
-        {data.description && typeof data.description === 'string' && (
+        {typeof data.description === 'string' && data.description && (
           <div className="text-xs text-gray-500 mt-1 line-clamp-2">{data.description}</div>
         )}
         {(input !== undefined || output !== undefined || isCurrentlyRunning) && (
