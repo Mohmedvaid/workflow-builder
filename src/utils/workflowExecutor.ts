@@ -108,8 +108,11 @@ async function executeNode(
     return null
   }
   try {
-    // Resolve data references in node data before execution (including env vars)
-    const resolvedNodeData = resolveDataReferences(node.data, input, environmentVariables) as WorkflowNode['data']
+    // Get node-specific key-value pairs
+    const nodeKeyValuePairs = (node.data.keyValuePairs as Record<string, string>) || {}
+    
+    // Resolve data references in node data before execution (including env vars and node key-value pairs)
+    const resolvedNodeData = resolveDataReferences(node.data, input, environmentVariables, nodeKeyValuePairs) as WorkflowNode['data']
     const nodeWithResolvedData: WorkflowNode = {
       ...node,
       data: resolvedNodeData,
@@ -151,8 +154,12 @@ async function executeNode(
       case 'read-file':
         output = await executeReadFileNode(nodeWithResolvedData, input)
         break
-      case 'ai-model':
-        output = await executeAIModelNode(nodeWithResolvedData, input)
+      case 'ai-chat':
+        output = await executeAIChatNode(nodeWithResolvedData, input, environmentVariables)
+        break
+      case 'ai-asset':
+        output = await executeAIAssetNode(nodeWithResolvedData, input, environmentVariables)
+        break
         break
       case 'ai-agent':
         output = await executeAIAgentNode(nodeWithResolvedData, input)
@@ -311,8 +318,40 @@ async function executeReadFileNode(node: WorkflowNode, _input: unknown): Promise
   )
 }
 
-async function executeAIModelNode(node: WorkflowNode, input: unknown): Promise<unknown> {
-  const model = (node.data.model as string) || 'gpt-3.5-turbo'
+/**
+ * Validates OpenAI API key format
+ */
+function validateAPIKey(apiKey: string | undefined): boolean {
+  if (!apiKey) return false
+  // OpenAI API keys start with 'sk-' and are typically 51 characters long
+  return apiKey.startsWith('sk-') && apiKey.length >= 20
+}
+
+/**
+ * Gets OpenAI API key from environment variables
+ */
+function getOpenAIAPIKey(environmentVariables?: Record<string, string>): string | null {
+  const apiKey = environmentVariables?.OPENAI_API_KEY
+  if (!apiKey || !validateAPIKey(apiKey)) {
+    return null
+  }
+  return apiKey
+}
+
+/**
+ * Executes OpenAI Chat Completions API call
+ */
+async function executeAIChatNode(
+  node: WorkflowNode,
+  input: unknown,
+  environmentVariables?: Record<string, string>
+): Promise<unknown> {
+  const apiKey = getOpenAIAPIKey(environmentVariables)
+  if (!apiKey) {
+    throw new Error('OpenAI API key is required. Set it in environment variables as $env.OPENAI_API_KEY')
+  }
+
+  const model = (node.data.model as string) || 'gpt-4o'
   const prompt = (node.data.prompt as string) || ''
   const temperature = (node.data.temperature as number) ?? 0.7
   const maxTokens = (node.data.maxTokens as number) ?? 1000
@@ -321,18 +360,325 @@ async function executeAIModelNode(node: WorkflowNode, input: unknown): Promise<u
     throw new Error('Prompt is required')
   }
 
-  // Replace {{input}} placeholder with actual input data
-  const processedPrompt = prompt.replace(/\{\{input\}\}/g, JSON.stringify(input))
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature,
+        max_tokens: maxTokens,
+      }),
+    })
 
-  // Note: This is a placeholder. In production, you would call the actual AI API
-  // This requires API keys and proper authentication
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }))
+      throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText} (${response.status})`)
+    }
+
+    const data = await response.json()
+    
+    // Extract the assistant's message content
+    const content = data.choices?.[0]?.message?.content || ''
+    
+    return ensureJSONOutput({
+      success: true,
+      model,
+      content,
+      usage: data.usage || {},
+      response: data,
+    })
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error(`Failed to call OpenAI API: ${String(error)}`)
+  }
+}
+
+/**
+ * Executes OpenAI Asset Generation API calls (TTS, STT, Images, Video, Embeddings)
+ */
+async function executeAIAssetNode(
+  node: WorkflowNode,
+  input: unknown,
+  environmentVariables?: Record<string, string>
+): Promise<unknown> {
+  const apiKey = getOpenAIAPIKey(environmentVariables)
+  if (!apiKey) {
+    throw new Error('OpenAI API key is required. Set it in environment variables as $env.OPENAI_API_KEY')
+  }
+
+  const assetType = (node.data.assetType as 'tts' | 'stt' | 'image' | 'video' | 'embedding') || 'image'
+  const model = (node.data.model as string) || ''
+
+  if (!model) {
+    throw new Error('Model is required')
+  }
+
+  try {
+    switch (assetType) {
+      case 'tts':
+        return await executeTTS(node, apiKey, input)
+      case 'stt':
+        return await executeSTT(node, apiKey, input)
+      case 'image':
+        return await executeImageGeneration(node, apiKey, input)
+      case 'video':
+        return await executeVideoGeneration(node, apiKey, input)
+      case 'embedding':
+        return await executeEmbedding(node, apiKey, input)
+      default:
+        throw new Error(`Unsupported asset type: ${assetType}`)
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error(`Failed to execute AI asset node: ${String(error)}`)
+  }
+}
+
+/**
+ * Executes Text-to-Speech API call
+ */
+async function executeTTS(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+  const model = (node.data.model as string) || 'tts-1'
+  const text = (node.data.input as string) || ''
+  const voice = (node.data.voice as string) || 'alloy'
+  const speed = (node.data.speed as number) ?? 1.0
+
+  if (!text) {
+    throw new Error('Text input is required for TTS')
+  }
+
+  const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      input: text,
+      voice,
+      speed,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(`OpenAI TTS API error: ${errorData.error?.message || response.statusText} (${response.status})`)
+  }
+
+  // TTS returns audio data as blob
+  const audioBlob = await response.blob()
+  const audioUrl = URL.createObjectURL(audioBlob)
+
   return ensureJSONOutput({
-    success: false,
-    message: 'AI model execution requires API configuration. This is a placeholder response.',
+    success: true,
     model,
-    prompt: processedPrompt,
-    temperature,
-    maxTokens,
+    audioUrl,
+    voice,
+    speed,
+    text,
+  })
+}
+
+/**
+ * Executes Speech-to-Text API call
+ */
+async function executeSTT(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+  const model = (node.data.model as string) || 'whisper-1'
+  const audioUrl = (node.data.audioUrl as string) || ''
+  const language = (node.data.language as string) || undefined
+
+  if (!audioUrl) {
+    throw new Error('Audio URL is required for STT')
+  }
+
+  // Fetch the audio file
+  const audioResponse = await fetch(audioUrl)
+  if (!audioResponse.ok) {
+    throw new Error(`Failed to fetch audio file: ${audioResponse.statusText}`)
+  }
+
+  const audioBlob = await audioResponse.blob()
+  const formData = new FormData()
+  formData.append('file', audioBlob, 'audio.mp3')
+  formData.append('model', model)
+  if (language) {
+    formData.append('language', language)
+  }
+
+  const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(`OpenAI STT API error: ${errorData.error?.message || response.statusText} (${response.status})`)
+  }
+
+  const data = await response.json()
+
+  return ensureJSONOutput({
+    success: true,
+    model,
+    text: data.text || '',
+    language: data.language,
+    response: data,
+  })
+}
+
+/**
+ * Executes Image Generation API call
+ */
+async function executeImageGeneration(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+  const model = (node.data.model as string) || 'dall-e-2'
+  const prompt = (node.data.prompt as string) || ''
+  const size = (node.data.size as string) || '1024x1024'
+  const quality = (node.data.quality as string) || 'standard'
+  const n = (node.data.n as number) ?? 1
+
+  if (!prompt) {
+    throw new Error('Prompt is required for image generation')
+  }
+
+  const payload: Record<string, unknown> = {
+    model,
+    prompt,
+    n,
+    size,
+  }
+
+  // Only include quality for dall-e-3 models
+  if (model.includes('dall-e-3') || model.includes('gpt-image')) {
+    payload.quality = quality
+  }
+
+  const response = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(`OpenAI Image API error: ${errorData.error?.message || response.statusText} (${response.status})`)
+  }
+
+  const data = await response.json()
+
+  return ensureJSONOutput({
+    success: true,
+    model,
+    images: data.data || [],
+    prompt,
+    size,
+    quality,
+  })
+}
+
+/**
+ * Executes Video Generation API call (Sora)
+ */
+async function executeVideoGeneration(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+  const model = (node.data.model as string) || 'sora-2'
+  const prompt = (node.data.prompt as string) || ''
+  const duration = (node.data.duration as number) ?? 10
+
+  if (!prompt) {
+    throw new Error('Prompt is required for video generation')
+  }
+
+  const response = await fetch('https://api.openai.com/v1/videos/generations', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      prompt,
+      duration,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(`OpenAI Video API error: ${errorData.error?.message || response.statusText} (${response.status})`)
+  }
+
+  const data = await response.json()
+
+  return ensureJSONOutput({
+    success: true,
+    model,
+    video: data.data?.[0] || {},
+    prompt,
+    duration,
+  })
+}
+
+/**
+ * Executes Embedding API call
+ */
+async function executeEmbedding(node: WorkflowNode, apiKey: string, input: unknown): Promise<unknown> {
+  const model = (node.data.model as string) || 'text-embedding-3-small'
+  const text = (node.data.input as string) || ''
+  const dimensions = (node.data.dimensions as number) || undefined
+
+  if (!text) {
+    throw new Error('Text input is required for embeddings')
+  }
+
+  const payload: Record<string, unknown> = {
+    model,
+    input: text,
+  }
+
+  if (dimensions) {
+    payload.dimensions = dimensions
+  }
+
+  const response = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }))
+    throw new Error(`OpenAI Embedding API error: ${errorData.error?.message || response.statusText} (${response.status})`)
+  }
+
+  const data = await response.json()
+
+  return ensureJSONOutput({
+    success: true,
+    model,
+    embedding: data.data?.[0]?.embedding || [],
+    usage: data.usage || {},
   })
 }
 

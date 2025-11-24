@@ -1,21 +1,35 @@
 import { Handle, Position, type NodeProps } from 'reactflow'
-import { Brain } from 'lucide-react'
+import { Image, Video, Mic, FileText, Layers } from 'lucide-react'
 import { useExecutionStore } from '@/store/executionStore'
 import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'
 import LoadingSpinner from '../LoadingSpinner'
 
-interface AIModelNodeData {
+interface AIAssetNodeData {
   label: string
-  type: 'ai-model'
+  type: 'ai-asset'
+  assetType?: 'tts' | 'stt' | 'image' | 'video' | 'embedding'
   model?: string
-  prompt?: string
-  temperature?: number
-  maxTokens?: number
   [key: string]: unknown
 }
 
-export default function AIModelNode({ data, selected, id }: NodeProps<AIModelNodeData>) {
+const assetTypeIcons = {
+  tts: Mic,
+  stt: Mic,
+  image: Image,
+  video: Video,
+  embedding: Layers,
+}
+
+const assetTypeLabels = {
+  tts: 'TTS',
+  stt: 'STT',
+  image: 'Image',
+  video: 'Video',
+  embedding: 'Embedding',
+}
+
+export default function AIAssetNode({ data, selected, id }: NodeProps<AIAssetNodeData>) {
   const { currentNodeId, nodeInputs, nodeOutputs, isRunning } = useExecutionStore()
   const { getLatestNodeData } = useExecutionHistoryStore()
   const isCurrentlyRunning = currentNodeId === id && isRunning
@@ -27,6 +41,10 @@ export default function AIModelNode({ data, selected, id }: NodeProps<AIModelNod
   const input = currentInput !== undefined ? currentInput : (historyData?.input !== undefined ? historyData.input : undefined)
   const output = currentOutput !== undefined ? currentOutput : (historyData?.output !== undefined ? historyData.output : undefined)
 
+  const assetType = data.assetType || 'image'
+  const Icon = assetTypeIcons[assetType] || Image
+  const label = assetTypeLabels[assetType] || 'Asset'
+
   return (
     <div
       className={`w-[200px] bg-white rounded-lg shadow-md border-2 ${
@@ -34,10 +52,10 @@ export default function AIModelNode({ data, selected, id }: NodeProps<AIModelNod
       } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
     >
       {/* Header */}
-      <div className="bg-pink-500 text-white px-4 py-2 rounded-t-lg flex items-center justify-between">
+      <div className="bg-purple-500 text-white px-4 py-2 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Brain className="w-4 h-4" />
-          <span className="text-xs font-semibold uppercase tracking-wide">AI Model</span>
+          <Icon className="w-4 h-4" />
+          <span className="text-xs font-semibold uppercase tracking-wide">AI {label}</span>
         </div>
         <div className="flex items-center gap-2">
           {isCurrentlyRunning && <LoadingSpinner size="sm" />}
@@ -49,19 +67,13 @@ export default function AIModelNode({ data, selected, id }: NodeProps<AIModelNod
 
       {/* Content */}
       <div className="px-4 py-3">
-        <div className="text-sm font-medium text-gray-900 truncate">{data.label || 'AI Model'}</div>
+        <div className="text-sm font-medium text-gray-900 truncate">{data.label || `AI ${label}`}</div>
         {data.model && (
           <div className="text-xs text-gray-500 mt-1.5 truncate">
             Model: <span className="font-mono">{data.model}</span>
           </div>
         )}
-        {data.prompt && (
-          <div className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
-            {data.prompt.substring(0, 40)}
-            {data.prompt.length > 40 ? '...' : ''}
-          </div>
-        )}
-        {!data.model && !data.prompt && (
+        {!data.model && (
           <div className="text-xs text-gray-400 mt-1.5 italic">No configuration</div>
         )}
         {(input !== undefined || output !== undefined || isCurrentlyRunning) && (
@@ -75,3 +87,4 @@ export default function AIModelNode({ data, selected, id }: NodeProps<AIModelNod
     </div>
   )
 }
+

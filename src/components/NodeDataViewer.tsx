@@ -8,7 +8,8 @@ import ApiCallConfig from './configs/ApiCallConfig'
 import RunJSConfig from './configs/RunJSConfig'
 import WriteFileConfig from './configs/WriteFileConfig'
 import ReadFileConfig from './configs/ReadFileConfig'
-import AIModelConfig from './configs/AIModelConfig'
+import AIChatConfig from './configs/AIChatConfig'
+import AIAssetConfig from './configs/AIAssetConfig'
 import AIAgentConfig from './configs/AIAgentConfig'
 import DataReferenceHelper from './DataReferenceHelper'
 
@@ -258,9 +259,10 @@ export default function NodeDataViewer({ node, onClose }: NodeDataViewerProps) {
                     {nodeType === 'read-file' && (
                       <ReadFileConfig data={editedNodeData} onUpdate={handleUpdate} />
                     )}
-                    {nodeType === 'ai-model' && <AIModelConfig data={editedNodeData} onUpdate={handleUpdate} />}
+                    {nodeType === 'ai-chat' && <AIChatConfig data={editedNodeData} onUpdate={handleUpdate} />}
+                    {nodeType === 'ai-asset' && <AIAssetConfig data={editedNodeData} onUpdate={handleUpdate} />}
                     {nodeType === 'ai-agent' && <AIAgentConfig data={editedNodeData} onUpdate={handleUpdate} />}
-                    {!['api-call', 'run-js', 'write-file', 'read-file', 'ai-model', 'ai-agent'].includes(nodeType) && (
+                    {!['api-call', 'run-js', 'write-file', 'read-file', 'ai-chat', 'ai-asset', 'ai-agent'].includes(nodeType) && (
                       <div>
                         <label
                           htmlFor="node-description"

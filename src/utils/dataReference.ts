@@ -1,22 +1,25 @@
 /**
- * Resolves data references in strings like $json.property or $env.VARIABLE_NAME
- * Supports accessing data from the current input and environment variables
+ * Resolves data references in strings like $json.property, $env.VARIABLE_NAME, or $node.key
+ * Supports accessing data from the current input, environment variables, and node key-value pairs
  */
 export function resolveDataReference(
   reference: string,
   inputData: unknown,
-  environmentVariables?: Record<string, string>
+  environmentVariables?: Record<string, string>,
+  nodeKeyValuePairs?: Record<string, string>
 ): unknown {
   if (typeof reference !== 'string') {
     return reference
   }
 
-  // Check if the string contains a data reference ($json or $env)
+  // Check if the string contains a data reference ($json, $env, or $node)
   const jsonPattern = /\$json(\.[a-zA-Z0-9_]+)+/g
   const envPattern = /\$env\.[a-zA-Z0-9_]+/g
+  const nodePattern = /\$node\.[a-zA-Z0-9_]+/g
   const jsonMatches = reference.match(jsonPattern) || []
   const envMatches = reference.match(envPattern) || []
-  const matches = [...jsonMatches, ...envMatches]
+  const nodeMatches = reference.match(nodePattern) || []
+  const matches = [...jsonMatches, ...envMatches, ...nodeMatches]
 
   if (matches.length === 0) {
     return reference
@@ -25,6 +28,12 @@ export function resolveDataReference(
   // If the entire string is just a single reference (possibly with whitespace), return the value directly
   const trimmedRef = reference.trim()
   if (matches.length === 1 && trimmedRef === matches[0]) {
+    // Check if it's a node key-value pair
+    if (trimmedRef.startsWith('$node.')) {
+      const key = trimmedRef.replace('$node.', '')
+      return nodeKeyValuePairs?.[key] || undefined
+    }
+    
     // Check if it's an env variable
     if (trimmedRef.startsWith('$env.')) {
       const varName = trimmedRef.replace('$env.', '')
@@ -51,8 +60,12 @@ export function resolveDataReference(
   for (const match of matches) {
     let value: unknown = undefined
     
-    // Handle environment variable references
-    if (match.startsWith('$env.')) {
+    // Handle node key-value pair references
+    if (match.startsWith('$node.')) {
+      const key = match.replace('$node.', '')
+      value = nodeKeyValuePairs?.[key]
+    } else if (match.startsWith('$env.')) {
+      // Handle environment variable references
       const varName = match.replace('$env.', '')
       value = environmentVariables?.[varName]
     } else {
@@ -95,24 +108,25 @@ export function resolveDataReference(
 export function resolveDataReferences(
   data: unknown,
   inputData: unknown,
-  environmentVariables?: Record<string, string>
+  environmentVariables?: Record<string, string>,
+  nodeKeyValuePairs?: Record<string, string>
 ): unknown {
   if (data === null || data === undefined) {
     return data
   }
 
   if (typeof data === 'string') {
-    return resolveDataReference(data, inputData, environmentVariables)
+    return resolveDataReference(data, inputData, environmentVariables, nodeKeyValuePairs)
   }
 
   if (Array.isArray(data)) {
-    return data.map((item) => resolveDataReferences(item, inputData, environmentVariables))
+    return data.map((item) => resolveDataReferences(item, inputData, environmentVariables, nodeKeyValuePairs))
   }
 
   if (typeof data === 'object') {
     const resolved: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(data)) {
-      resolved[key] = resolveDataReferences(value, inputData, environmentVariables)
+      resolved[key] = resolveDataReferences(value, inputData, environmentVariables, nodeKeyValuePairs)
     }
     return resolved
   }

@@ -11,6 +11,7 @@ import {
   Bot,
   Search,
   X,
+  MessageSquare,
 } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import type { NodeType } from '@/types'
@@ -92,11 +93,19 @@ const nodeTypes: NodeTypeItem[] = [
     category: 'advanced',
   },
   {
-    type: 'ai-model',
-    label: 'AI Model',
+    type: 'ai-chat',
+    label: 'AI Chat',
+    icon: <MessageSquare className="w-4 h-4" />,
+    color: 'bg-blue-500',
+    description: 'OpenAI chat models',
+    category: 'advanced',
+  },
+  {
+    type: 'ai-asset',
+    label: 'AI Asset',
     icon: <Brain className="w-4 h-4" />,
-    color: 'bg-pink-500',
-    description: 'Call AI/LLM models',
+    color: 'bg-purple-500',
+    description: 'TTS, STT, images, video, embeddings',
     category: 'advanced',
   },
   {

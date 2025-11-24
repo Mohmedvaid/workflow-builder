@@ -20,7 +20,8 @@ import ApiCallNode from './nodes/ApiCallNode'
 import RunJSNode from './nodes/RunJSNode'
 import WriteFileNode from './nodes/WriteFileNode'
 import ReadFileNode from './nodes/ReadFileNode'
-import AIModelNode from './nodes/AIModelNode'
+import AIChatNode from './nodes/AIChatNode'
+import AIAssetNode from './nodes/AIAssetNode'
 import AIAgentNode from './nodes/AIAgentNode'
 import NodeDataViewer from './NodeDataViewer'
 
@@ -34,7 +35,8 @@ const nodeTypes = {
   'run-js': RunJSNode,
   'write-file': WriteFileNode,
   'read-file': ReadFileNode,
-  'ai-model': AIModelNode,
+  'ai-chat': AIChatNode,
+  'ai-asset': AIAssetNode,
   'ai-agent': AIAgentNode,
 }
 
@@ -147,7 +149,8 @@ export default function WorkflowCanvas() {
               'run-js': '#f59e0b',
               'write-file': '#14b8a6',
               'read-file': '#06b6d4',
-              'ai-model': '#ec4899',
+              'ai-chat': '#3b82f6',
+              'ai-asset': '#a855f7',
             }
             return colors[type] || '#6b7280'
           }}

@@ -9,7 +9,8 @@ export type NodeType =
   | 'run-js'
   | 'write-file'
   | 'read-file'
-  | 'ai-model'
+  | 'ai-chat'
+  | 'ai-asset'
   | 'ai-agent'
 
 export interface WorkflowNode {

@@ -29,6 +29,11 @@ export default function DataReferenceHelper({ onDismiss }: DataReferenceHelperPr
           <p className="mt-1 text-blue-700">
             Example: <span className="font-mono">$env.API_KEY</span>
           </p>
+          <p className="mt-2 font-medium">Use node key-value pairs:</p>
+          <p className="font-mono">$node.key</p>
+          <p className="mt-1 text-blue-700">
+            Example: <span className="font-mono">$node.apiKey</span>
+          </p>
         </div>
       </div>
     </div>

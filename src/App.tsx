@@ -230,7 +230,8 @@ function App() {
         'run-js': 'Run JavaScript',
         'write-file': 'Write File',
         'read-file': 'Read File',
-        'ai-model': 'AI Model',
+        'ai-chat': 'AI Chat',
+        'ai-asset': 'AI Asset',
         'ai-agent': 'AI Agent',
       }
       return labels[nodeType] || 'Node'
