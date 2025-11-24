@@ -3,6 +3,7 @@ import type { NodeType } from '@/types'
 import { useExecutionStore } from '@/store/executionStore'
 import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'
+import LoadingSpinner from '../LoadingSpinner'
 
 interface BaseNodeData {
   label: string
@@ -42,7 +43,7 @@ export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>
 
   return (
     <div
-      className={`min-w-[200px] bg-white rounded-lg shadow-md border-2 ${
+      className={`w-[200px] bg-white rounded-lg shadow-md border-2 ${
         selected ? 'border-primary-500' : 'border-gray-200'
       } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
     >
@@ -50,17 +51,20 @@ export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>
       <div className={`${colorClass} text-white px-4 py-2 rounded-t-lg`}>
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wide">{typeLabel}</span>
-          {(input !== undefined || output !== undefined) && (
-            <div className="w-2 h-2 bg-white rounded-full" title="Has execution data - Double-click to view" />
-          )}
+          <div className="flex items-center gap-2">
+            {isCurrentlyRunning && <LoadingSpinner size="sm" />}
+            {(input !== undefined || output !== undefined) && !isCurrentlyRunning && (
+              <div className="w-2 h-2 bg-white rounded-full" title="Has execution data - Double-click to view" />
+            )}
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="px-4 py-3">
-        <div className="text-sm font-medium text-gray-900">{data.label || 'Untitled Node'}</div>
+        <div className="text-sm font-medium text-gray-900 truncate">{data.label || 'Untitled Node'}</div>
         {data.description && (
-          <div className="text-xs text-gray-500 mt-1">{data.description as string}</div>
+          <div className="text-xs text-gray-500 mt-1 line-clamp-2">{data.description as string}</div>
         )}
         {(input !== undefined || output !== undefined || isCurrentlyRunning) && (
           <NodeDataDisplay input={input} output={output} isRunning={isCurrentlyRunning} />
@@ -69,26 +73,26 @@ export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>
 
       {/* Handles */}
       {nodeType !== 'trigger' && (
-        <Handle type="target" position={Position.Top} className="w-3 h-3 bg-gray-400" />
+        <Handle type="target" position={Position.Left} className="w-3 h-3 bg-gray-400" />
       )}
       {nodeType !== 'condition' && (
-        <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-gray-400" />
+        <Handle type="source" position={Position.Right} className="w-3 h-3 bg-gray-400" />
       )}
       {nodeType === 'condition' && (
         <>
           <Handle
             type="source"
-            position={Position.Bottom}
+            position={Position.Right}
             id="true"
             className="w-3 h-3 bg-green-500"
-            style={{ left: '30%' }}
+            style={{ top: '30%' }}
           />
           <Handle
             type="source"
-            position={Position.Bottom}
+            position={Position.Right}
             id="false"
             className="w-3 h-3 bg-red-500"
-            style={{ left: '70%' }}
+            style={{ top: '70%' }}
           />
         </>
       )}

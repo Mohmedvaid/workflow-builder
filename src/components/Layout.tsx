@@ -11,9 +11,10 @@ interface LayoutProps {
   onNodeTypeSelect?: (type: NodeType) => void
   onBackToHome?: () => void
   currentWorkflowId: string | null
+  onWorkflowSaved?: () => void
 }
 
-export default function Layout({ onNodeTypeSelect, onBackToHome, currentWorkflowId }: LayoutProps) {
+export default function Layout({ onNodeTypeSelect, onBackToHome, currentWorkflowId, onWorkflowSaved }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true)
@@ -34,12 +35,13 @@ export default function Layout({ onNodeTypeSelect, onBackToHome, currentWorkflow
         onSettings={() => setIsSettingsOpen(true)}
         currentWorkflowId={currentWorkflowId}
         onToggle={(isOpen) => setIsLeftSidebarOpen(isOpen)}
+        onWorkflowSaved={onWorkflowSaved}
       />
       <div
         className="flex flex-col transition-all duration-300 flex-1"
         style={{ marginLeft: isLeftSidebarOpen ? '192px' : '64px' }}
       >
-        <Header />
+        <Header workflowId={currentWorkflowId} />
         <div className="flex-1 flex overflow-hidden relative">
           <WorkflowCanvas />
           {isSidebarOpen && (
@@ -48,7 +50,7 @@ export default function Layout({ onNodeTypeSelect, onBackToHome, currentWorkflow
             </div>
           )}
           <FloatingAddButton onClick={handleToggleSidebar} />
-          <WorkflowSettings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+          <WorkflowSettings isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} workflowId={currentWorkflowId} />
         </div>
       </div>
     </div>

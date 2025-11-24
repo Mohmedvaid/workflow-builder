@@ -7,9 +7,11 @@ import { readWorkflowFile } from '@/utils/workflowUtils'
 import { executeWorkflow } from '@/utils/workflowExecutor'
 import { useRef } from 'react'
 
-interface HeaderProps {}
+interface HeaderProps {
+  workflowId?: string | null
+}
 
-export default function Header({}: HeaderProps) {
+export default function Header({ workflowId }: HeaderProps) {
   const { exportWorkflow, importWorkflow, workflowName, setWorkflowName, nodes } =
     useWorkflowStore()
   const { isRunning, clearExecution } = useExecutionStore()
@@ -50,27 +52,31 @@ export default function Header({}: HeaderProps) {
       // Track current execution data for preserving input/output
       let currentExecutionData: Record<string, { input?: unknown; output?: unknown }> = {}
       
-      const result = await executeWorkflow(workflow, {
-        startExecution: executionStore.startExecution,
-        stopExecution: executionStore.stopExecution,
-        setCurrentNode: executionStore.setCurrentNode,
-        setNodeInput: (nodeId: string, input: unknown) => {
-          executionStore.setNodeInput(nodeId, input)
-          // Get existing output from current execution if any
-          const existingOutput = currentExecutionData[nodeId]?.output
-          executionHistoryStore.saveNodeData(nodeId, input, existingOutput)
-          // Update tracking
-          currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], input }
+      const result = await executeWorkflow(
+        workflow,
+        {
+          startExecution: executionStore.startExecution,
+          stopExecution: executionStore.stopExecution,
+          setCurrentNode: executionStore.setCurrentNode,
+          setNodeInput: (nodeId: string, input: unknown) => {
+            executionStore.setNodeInput(nodeId, input)
+            // Get existing output from current execution if any
+            const existingOutput = currentExecutionData[nodeId]?.output
+            executionHistoryStore.saveNodeData(nodeId, input, existingOutput)
+            // Update tracking
+            currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], input }
+          },
+          setNodeOutput: (nodeId: string, output: unknown) => {
+            executionStore.setNodeOutput(nodeId, output)
+            // Get existing input from current execution if any
+            const existingInput = currentExecutionData[nodeId]?.input
+            executionHistoryStore.saveNodeData(nodeId, existingInput, output)
+            // Update tracking
+            currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], output }
+          },
         },
-        setNodeOutput: (nodeId: string, output: unknown) => {
-          executionStore.setNodeOutput(nodeId, output)
-          // Get existing input from current execution if any
-          const existingInput = currentExecutionData[nodeId]?.input
-          executionHistoryStore.saveNodeData(nodeId, existingInput, output)
-          // Update tracking
-          currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], output }
-        },
-      })
+        workflowId
+      )
       const executionTime = Date.now() - startTime
       
       // Finish execution in history store

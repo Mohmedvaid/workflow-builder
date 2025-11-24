@@ -1,21 +1,22 @@
 import { Handle, Position, type NodeProps } from 'reactflow'
-import { Globe } from 'lucide-react'
+import { Bot } from 'lucide-react'
 import { useExecutionStore } from '@/store/executionStore'
 import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'
 import LoadingSpinner from '../LoadingSpinner'
 
-interface ApiCallNodeData {
+interface AIAgentNodeData {
   label: string
-  type: 'api-call'
-  url?: string
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
-  headers?: string
-  body?: string
+  type: 'ai-agent'
+  systemPrompt?: string
+  model?: string
+  temperature?: number
+  maxTokens?: number
+  tools?: string
   [key: string]: unknown
 }
 
-export default function ApiCallNode({ data, selected, id }: NodeProps<ApiCallNodeData>) {
+export default function AIAgentNode({ data, selected, id }: NodeProps<AIAgentNodeData>) {
   const { currentNodeId, nodeInputs, nodeOutputs, isRunning } = useExecutionStore()
   const { getLatestNodeData } = useExecutionHistoryStore()
   const isCurrentlyRunning = currentNodeId === id && isRunning
@@ -34,10 +35,10 @@ export default function ApiCallNode({ data, selected, id }: NodeProps<ApiCallNod
       } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
     >
       {/* Header */}
-      <div className="bg-indigo-500 text-white px-4 py-2 rounded-t-lg flex items-center justify-between">
+      <div className="bg-violet-500 text-white px-4 py-2 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Globe className="w-4 h-4" />
-          <span className="text-xs font-semibold uppercase tracking-wide">API Call</span>
+          <Bot className="w-4 h-4" />
+          <span className="text-xs font-semibold uppercase tracking-wide">AI Agent</span>
         </div>
         <div className="flex items-center gap-2">
           {isCurrentlyRunning && <LoadingSpinner size="sm" />}
@@ -49,14 +50,20 @@ export default function ApiCallNode({ data, selected, id }: NodeProps<ApiCallNod
 
       {/* Content */}
       <div className="px-4 py-3">
-        <div className="text-sm font-medium text-gray-900 truncate">{data.label || 'API Call'}</div>
-        {data.url && (
+        <div className="text-sm font-medium text-gray-900 truncate">{data.label || 'AI Agent'}</div>
+        {data.model && (
           <div className="text-xs text-gray-500 mt-1.5 truncate">
-            <span className="font-mono">{data.method || 'GET'}</span> {data.url}
+            Model: <span className="font-mono">{data.model}</span>
           </div>
         )}
-        {!data.url && (
-          <div className="text-xs text-gray-400 mt-1.5 italic">No URL configured</div>
+        {data.systemPrompt && (
+          <div className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
+            {data.systemPrompt.substring(0, 40)}
+            {data.systemPrompt.length > 40 ? '...' : ''}
+          </div>
+        )}
+        {!data.model && !data.systemPrompt && (
+          <div className="text-xs text-gray-400 mt-1.5 italic">No configuration</div>
         )}
         {(input !== undefined || output !== undefined || isCurrentlyRunning) && (
           <NodeDataDisplay input={input} output={output} isRunning={isCurrentlyRunning} />
@@ -69,3 +76,4 @@ export default function ApiCallNode({ data, selected, id }: NodeProps<ApiCallNod
     </div>
   )
 }
+

@@ -1,12 +1,14 @@
 import { Settings, X } from 'lucide-react'
 import { useWorkflowStore } from '@/store/workflowStore'
+import EnvironmentVariables from './EnvironmentVariables'
 
 interface WorkflowSettingsProps {
   isOpen: boolean
   onClose: () => void
+  workflowId: string | null
 }
 
-export default function WorkflowSettings({ isOpen, onClose }: WorkflowSettingsProps) {
+export default function WorkflowSettings({ isOpen, onClose, workflowId }: WorkflowSettingsProps) {
   const { timeout, setTimeout } = useWorkflowStore()
 
   const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +47,7 @@ export default function WorkflowSettings({ isOpen, onClose }: WorkflowSettingsPr
         </div>
 
             {/* Content */}
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
               {/* Timeout Section */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -99,6 +101,11 @@ export default function WorkflowSettings({ isOpen, onClose }: WorkflowSettingsPr
                     )}
                   </p>
                 </div>
+              </div>
+
+              {/* Environment Variables Section */}
+              <div className="border-t border-gray-200 pt-6">
+                <EnvironmentVariables workflowId={workflowId} />
               </div>
             </div>
 

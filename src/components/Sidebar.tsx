@@ -8,6 +8,7 @@ import {
   FileDown,
   FileUp,
   Brain,
+  Bot,
   Search,
   X,
 } from 'lucide-react'
@@ -96,6 +97,14 @@ const nodeTypes: NodeTypeItem[] = [
     icon: <Brain className="w-4 h-4" />,
     color: 'bg-pink-500',
     description: 'Call AI/LLM models',
+    category: 'advanced',
+  },
+  {
+    type: 'ai-agent',
+    label: 'AI Agent',
+    icon: <Bot className="w-4 h-4" />,
+    color: 'bg-violet-500',
+    description: 'Autonomous AI agent with tools',
     category: 'advanced',
   },
 ]

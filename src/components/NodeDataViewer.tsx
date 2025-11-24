@@ -9,6 +9,8 @@ import RunJSConfig from './configs/RunJSConfig'
 import WriteFileConfig from './configs/WriteFileConfig'
 import ReadFileConfig from './configs/ReadFileConfig'
 import AIModelConfig from './configs/AIModelConfig'
+import AIAgentConfig from './configs/AIAgentConfig'
+import DataReferenceHelper from './DataReferenceHelper'
 
 interface NodeDataViewerProps {
   node: Node | null
@@ -23,6 +25,7 @@ export default function NodeDataViewer({ node, onClose }: NodeDataViewerProps) {
   // Store original node data and edited data
   const [originalNodeData, setOriginalNodeData] = useState<Record<string, unknown> | null>(null)
   const [editedNodeData, setEditedNodeData] = useState<Record<string, unknown>>({})
+  const [showDataReferenceHelper, setShowDataReferenceHelper] = useState(true)
 
   // Initialize with node data when node changes
   useEffect(() => {
@@ -31,6 +34,8 @@ export default function NodeDataViewer({ node, onClose }: NodeDataViewerProps) {
       const original = JSON.parse(JSON.stringify(node.data))
       setOriginalNodeData(original)
       setEditedNodeData(original)
+      // Reset helper visibility when node changes
+      setShowDataReferenceHelper(true)
     }
   }, [node?.id])
 
@@ -240,6 +245,9 @@ export default function NodeDataViewer({ node, onClose }: NodeDataViewerProps) {
 
                   {/* Specialized Configuration */}
                   <div className="border-t border-gray-200 pt-4">
+                    {incomingEdges.length > 0 && showDataReferenceHelper && (
+                      <DataReferenceHelper onDismiss={() => setShowDataReferenceHelper(false)} />
+                    )}
                     {nodeType === 'api-call' && (
                       <ApiCallConfig data={editedNodeData} onUpdate={handleUpdate} />
                     )}
@@ -251,7 +259,8 @@ export default function NodeDataViewer({ node, onClose }: NodeDataViewerProps) {
                       <ReadFileConfig data={editedNodeData} onUpdate={handleUpdate} />
                     )}
                     {nodeType === 'ai-model' && <AIModelConfig data={editedNodeData} onUpdate={handleUpdate} />}
-                    {!['api-call', 'run-js', 'write-file', 'read-file', 'ai-model'].includes(nodeType) && (
+                    {nodeType === 'ai-agent' && <AIAgentConfig data={editedNodeData} onUpdate={handleUpdate} />}
+                    {!['api-call', 'run-js', 'write-file', 'read-file', 'ai-model', 'ai-agent'].includes(nodeType) && (
                       <div>
                         <label
                           htmlFor="node-description"

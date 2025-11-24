@@ -3,6 +3,7 @@ import { Brain } from 'lucide-react'
 import { useExecutionStore } from '@/store/executionStore'
 import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'
+import LoadingSpinner from '../LoadingSpinner'
 
 interface AIModelNodeData {
   label: string
@@ -28,7 +29,7 @@ export default function AIModelNode({ data, selected, id }: NodeProps<AIModelNod
 
   return (
     <div
-      className={`min-w-[220px] bg-white rounded-lg shadow-md border-2 ${
+      className={`w-[200px] bg-white rounded-lg shadow-md border-2 ${
         selected ? 'border-primary-500' : 'border-gray-200'
       } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
     >
@@ -38,21 +39,24 @@ export default function AIModelNode({ data, selected, id }: NodeProps<AIModelNod
           <Brain className="w-4 h-4" />
           <span className="text-xs font-semibold uppercase tracking-wide">AI Model</span>
         </div>
-        {(input !== undefined || output !== undefined) && (
-          <div className="w-2 h-2 bg-white rounded-full" title="Has execution data - Double-click to view" />
-        )}
+        <div className="flex items-center gap-2">
+          {isCurrentlyRunning && <LoadingSpinner size="sm" />}
+          {(input !== undefined || output !== undefined) && !isCurrentlyRunning && (
+            <div className="w-2 h-2 bg-white rounded-full" title="Has execution data - Double-click to view" />
+          )}
+        </div>
       </div>
 
       {/* Content */}
       <div className="px-4 py-3">
-        <div className="text-sm font-medium text-gray-900">{data.label || 'AI Model'}</div>
+        <div className="text-sm font-medium text-gray-900 truncate">{data.label || 'AI Model'}</div>
         {data.model && (
-          <div className="text-xs text-gray-500 mt-1.5">
+          <div className="text-xs text-gray-500 mt-1.5 truncate">
             Model: <span className="font-mono">{data.model}</span>
           </div>
         )}
         {data.prompt && (
-          <div className="text-xs text-gray-500 mt-1 line-clamp-2">
+          <div className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
             {data.prompt.substring(0, 40)}
             {data.prompt.length > 40 ? '...' : ''}
           </div>
@@ -66,8 +70,8 @@ export default function AIModelNode({ data, selected, id }: NodeProps<AIModelNod
       </div>
 
       {/* Handles */}
-      <Handle type="target" position={Position.Top} className="w-3 h-3 bg-gray-400" />
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-gray-400" />
+      <Handle type="target" position={Position.Left} className="w-3 h-3 bg-gray-400" />
+      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-gray-400" />
     </div>
   )
 }

@@ -1,4 +1,6 @@
 import type { Workflow, WorkflowNode, WorkflowEdge } from '@/types'
+import { resolveDataReferences, ensureJSONOutput } from './dataReference'
+import { useEnvironmentStore } from '@/store/environmentStore'
 
 interface ExecutionContext {
   nodeOutputs: Map<string, unknown>
@@ -19,7 +21,8 @@ interface ExecutionStore {
  */
 export async function executeWorkflow(
   workflow: Workflow,
-  executionStore?: ExecutionStore
+  executionStore?: ExecutionStore,
+  workflowId?: string | null
 ): Promise<ExecutionContext> {
   const context: ExecutionContext = {
     nodeOutputs: new Map(),
@@ -42,12 +45,15 @@ export async function executeWorkflow(
   }
 
   try {
+    // Get environment variables for this workflow
+    const envVars = workflowId ? useEnvironmentStore.getState().getAllVariables(workflowId) : {}
+    
     // Build a graph of reachable nodes from the trigger
     const reachableNodes = getReachableNodes(triggerNode.id, workflow)
     
     // Execute starting from the trigger node
     // Only nodes in reachableNodes will be executed
-    await executeNode(triggerNode, workflow, context, null, executionStore, reachableNodes)
+    await executeNode(triggerNode, workflow, context, null, executionStore, reachableNodes, envVars)
   } finally {
     if (executionStore) {
       executionStore.stopExecution()
@@ -94,13 +100,21 @@ async function executeNode(
   context: ExecutionContext,
   input: unknown,
   executionStore?: ExecutionStore,
-  reachableNodes?: Set<string>
+  reachableNodes?: Set<string>,
+  environmentVariables?: Record<string, string>
 ): Promise<unknown> {
   // Skip nodes that are not reachable from the trigger
   if (reachableNodes && !reachableNodes.has(node.id)) {
     return null
   }
   try {
+    // Resolve data references in node data before execution (including env vars)
+    const resolvedNodeData = resolveDataReferences(node.data, input, environmentVariables) as WorkflowNode['data']
+    const nodeWithResolvedData: WorkflowNode = {
+      ...node,
+      data: resolvedNodeData,
+    }
+
     // Set current node and input for visual feedback
     if (executionStore) {
       executionStore.setCurrentNode(node.id)
@@ -114,41 +128,46 @@ async function executeNode(
 
     switch (node.type) {
       case 'trigger':
-        output = await executeTriggerNode(node, input)
+        output = await executeTriggerNode(nodeWithResolvedData, input)
         break
       case 'action':
-        output = await executeActionNode(node, input)
+        output = await executeActionNode(nodeWithResolvedData, input)
         break
       case 'condition':
-        output = await executeConditionNode(node, input)
+        output = await executeConditionNode(nodeWithResolvedData, input)
         break
       case 'transform':
-        output = await executeTransformNode(node, input)
+        output = await executeTransformNode(nodeWithResolvedData, input)
         break
       case 'api-call':
-        output = await executeApiCallNode(node, input)
+        output = await executeApiCallNode(nodeWithResolvedData, input)
         break
       case 'run-js':
-        output = await executeRunJSNode(node, input)
+        output = await executeRunJSNode(nodeWithResolvedData, input)
         break
       case 'write-file':
-        output = await executeWriteFileNode(node, input)
+        output = await executeWriteFileNode(nodeWithResolvedData, input)
         break
       case 'read-file':
-        output = await executeReadFileNode(node, input)
+        output = await executeReadFileNode(nodeWithResolvedData, input)
         break
       case 'ai-model':
-        output = await executeAIModelNode(node, input)
+        output = await executeAIModelNode(nodeWithResolvedData, input)
+        break
+      case 'ai-agent':
+        output = await executeAIAgentNode(nodeWithResolvedData, input)
         break
       default:
         output = input
     }
 
-    context.nodeOutputs.set(node.id, output)
+    // Ensure output is always JSON
+    const jsonOutput = ensureJSONOutput(output)
+    context.nodeOutputs.set(node.id, jsonOutput)
 
     // Set output for visual feedback and save to history
     if (executionStore) {
-      executionStore.setNodeOutput(node.id, output)
+      executionStore.setNodeOutput(node.id, jsonOutput)
     }
 
     // Execute connected nodes
@@ -156,11 +175,11 @@ async function executeNode(
     for (const edge of outgoingEdges) {
       const targetNode = workflow.nodes.find((n) => n.id === edge.target)
       if (targetNode) {
-        await executeNode(targetNode, workflow, context, output, executionStore, reachableNodes)
+        await executeNode(targetNode, workflow, context, jsonOutput, executionStore, reachableNodes, environmentVariables)
       }
     }
 
-    return output
+    return jsonOutput
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     context.errors.push({ nodeId: node.id, error: errorMessage })
@@ -172,11 +191,19 @@ async function executeNode(
 }
 
 async function executeTriggerNode(node: WorkflowNode, _input: unknown): Promise<unknown> {
-  return { triggered: true, timestamp: new Date().toISOString(), data: node.data }
+  return ensureJSONOutput({
+    triggered: true,
+    timestamp: new Date().toISOString(),
+    data: node.data,
+  })
 }
 
 async function executeActionNode(node: WorkflowNode, input: unknown): Promise<unknown> {
-  return { ...(input as object), action: node.data.label || 'Action executed' }
+  const inputObj = typeof input === 'object' && input !== null ? input : {}
+  return ensureJSONOutput({
+    ...(inputObj as Record<string, unknown>),
+    action: node.data.label || 'Action executed',
+  })
 }
 
 async function executeConditionNode(node: WorkflowNode, input: unknown): Promise<unknown> {
@@ -185,14 +212,18 @@ async function executeConditionNode(node: WorkflowNode, input: unknown): Promise
   try {
     // Simple evaluation - in production, use a proper expression evaluator
     const result = eval(`(${condition})`)
-    return { condition: result, input }
+    return ensureJSONOutput({ condition: result, input })
   } catch {
-    return { condition: true, input }
+    return ensureJSONOutput({ condition: true, input })
   }
 }
 
 async function executeTransformNode(node: WorkflowNode, input: unknown): Promise<unknown> {
-  return { transformed: true, original: input, transform: node.data.label }
+  return ensureJSONOutput({
+    transformed: true,
+    original: input,
+    transform: node.data.label,
+  })
 }
 
 async function executeApiCallNode(node: WorkflowNode, input: unknown): Promise<unknown> {
@@ -220,7 +251,7 @@ async function executeApiCallNode(node: WorkflowNode, input: unknown): Promise<u
     }
 
     const data = await response.json().catch(() => response.text())
-    return { success: true, status: response.status, data }
+    return ensureJSONOutput({ success: true, status: response.status, data })
   } catch (error) {
     throw new Error(`API call failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
@@ -237,7 +268,7 @@ async function executeRunJSNode(node: WorkflowNode, input: unknown): Promise<unk
     // Create a safe execution context
     const func = new Function('input', code)
     const result = func(input)
-    return result
+    return ensureJSONOutput(result)
   } catch (error) {
     throw new Error(`JavaScript execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
@@ -263,7 +294,7 @@ async function executeWriteFileNode(node: WorkflowNode, input: unknown): Promise
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
 
-  return { success: true, filePath, message: 'File downloaded (browser limitation)' }
+  return ensureJSONOutput({ success: true, filePath, message: 'File downloaded (browser limitation)' })
 }
 
 async function executeReadFileNode(node: WorkflowNode, _input: unknown): Promise<unknown> {
@@ -295,14 +326,62 @@ async function executeAIModelNode(node: WorkflowNode, input: unknown): Promise<u
 
   // Note: This is a placeholder. In production, you would call the actual AI API
   // This requires API keys and proper authentication
-  return {
+  return ensureJSONOutput({
     success: false,
     message: 'AI model execution requires API configuration. This is a placeholder response.',
     model,
     prompt: processedPrompt,
     temperature,
     maxTokens,
+  })
+}
+
+async function executeAIAgentNode(node: WorkflowNode, input: unknown): Promise<unknown> {
+  const model = (node.data.model as string) || 'gpt-4'
+  const systemPrompt = (node.data.systemPrompt as string) || ''
+  const temperature = (node.data.temperature as number) ?? 0.7
+  const maxTokens = (node.data.maxTokens as number) ?? 2000
+  const toolsStr = (node.data.tools as string) || '[]'
+
+  if (!systemPrompt) {
+    throw new Error('System instructions are required for AI Agent')
   }
+
+  // Parse tools
+  let tools: Array<{ name: string; description: string }> = []
+  try {
+    tools = JSON.parse(toolsStr)
+  } catch {
+    // Invalid JSON, use empty array
+    tools = []
+  }
+
+  // Replace {{input}} placeholder with actual input data
+  const processedSystemPrompt = systemPrompt.replace(/\{\{input\}\}/g, JSON.stringify(input))
+
+  // Note: This is a placeholder. In production, you would:
+  // 1. Call the AI API with system prompt and tools
+  // 2. Handle function calling/tool usage
+  // 3. Maintain conversation context
+  // 4. Execute tools and return results
+  // 5. Chain multiple tool calls if needed
+  
+  return ensureJSONOutput({
+    success: false,
+    message: 'AI Agent execution requires API configuration. This is a placeholder response.',
+    agent: {
+      model,
+      systemPrompt: processedSystemPrompt,
+      tools: tools.length > 0 ? tools : 'No tools configured',
+      temperature,
+      maxTokens,
+    },
+    response: {
+      reasoning: 'AI Agent would analyze the input, decide on actions, use available tools, and return results.',
+      actions: tools.length > 0 ? `Agent can use ${tools.length} tool(s): ${tools.map(t => t.name).join(', ')}` : 'No tools available',
+      output: 'Agent output would appear here after execution',
+    },
+  })
 }
 
 /**

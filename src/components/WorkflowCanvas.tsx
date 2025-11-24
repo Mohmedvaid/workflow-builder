@@ -21,6 +21,7 @@ import RunJSNode from './nodes/RunJSNode'
 import WriteFileNode from './nodes/WriteFileNode'
 import ReadFileNode from './nodes/ReadFileNode'
 import AIModelNode from './nodes/AIModelNode'
+import AIAgentNode from './nodes/AIAgentNode'
 import NodeDataViewer from './NodeDataViewer'
 
 const nodeTypes = {
@@ -34,6 +35,7 @@ const nodeTypes = {
   'write-file': WriteFileNode,
   'read-file': ReadFileNode,
   'ai-model': AIModelNode,
+  'ai-agent': AIAgentNode,
 }
 
 export default function WorkflowCanvas() {

@@ -9,9 +9,10 @@ interface LeftSidebarProps {
   onSettings: () => void
   currentWorkflowId: string | null
   onToggle?: (isOpen: boolean) => void
+  onWorkflowSaved?: () => void
 }
 
-export default function LeftSidebar({ onHome, onSettings, currentWorkflowId, onToggle }: LeftSidebarProps) {
+export default function LeftSidebar({ onHome, onSettings, currentWorkflowId, onToggle, onWorkflowSaved }: LeftSidebarProps) {
   const [isOpen, setIsOpen] = useState(true)
 
   const handleToggle = () => {
@@ -29,6 +30,7 @@ export default function LeftSidebar({ onHome, onSettings, currentWorkflowId, onT
     }
     const workflow = exportWorkflow()
     updateWorkflow(currentWorkflowId, workflow)
+    onWorkflowSaved?.() // Notify parent that workflow was saved
     alert('Workflow saved successfully!')
   }
 

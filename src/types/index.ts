@@ -10,6 +10,7 @@ export type NodeType =
   | 'write-file'
   | 'read-file'
   | 'ai-model'
+  | 'ai-agent'
 
 export interface WorkflowNode {
   id: string
