@@ -19,7 +19,6 @@ function App() {
   const { addNode, nodes, exportWorkflow, importWorkflow, clearWorkflow, workflowName, edges } =
     useWorkflowStore()
   const { createWorkflow, updateWorkflow, getWorkflow } = useWorkflowsStore()
-  const { clearWorkflow: clearEnvVars } = useEnvironmentStore()
 
   // Helper function to normalize workflow for comparison
   const normalizeWorkflowForComparison = useCallback((workflow: ReturnType<typeof exportWorkflow>) => {

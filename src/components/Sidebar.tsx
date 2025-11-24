@@ -1,8 +1,6 @@
 import {
   Play,
-  Settings,
   GitBranch,
-  Code,
   Globe,
   Code2,
   FileText,

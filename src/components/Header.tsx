@@ -59,7 +59,7 @@ export default function Header({ workflowId }: HeaderProps) {
       const executionStore = useExecutionStore.getState()
       
       // Start execution in history store
-      const executionId = executionHistoryStore.startExecution(workflow.name)
+      executionHistoryStore.startExecution(workflow.name)
       
       // Track current execution data for preserving input/output
       let currentExecutionData: Record<string, { input?: unknown; output?: unknown }> = {}

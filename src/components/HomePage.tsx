@@ -1,4 +1,4 @@
-import { Plus, Trash2, FileText, Clock, Sparkles } from 'lucide-react'
+import { Plus, Trash2, Clock, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { useWorkflowsStore } from '@/store/workflowsStore'
 import WelcomePopup from './WelcomePopup'

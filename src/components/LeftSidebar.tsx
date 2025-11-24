@@ -20,7 +20,7 @@ export default function LeftSidebar({ onHome, onSettings, currentWorkflowId, onT
     setIsOpen(newState)
     onToggle?.(newState)
   }
-  const { exportWorkflow, clearWorkflow, workflowName } = useWorkflowStore()
+  const { exportWorkflow, clearWorkflow } = useWorkflowStore()
   const { updateWorkflow } = useWorkflowsStore()
 
   const handleSave = () => {

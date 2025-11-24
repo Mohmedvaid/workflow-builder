@@ -19,7 +19,7 @@ interface NodeDataViewerProps {
 export default function NodeDataViewer({ node, onClose }: NodeDataViewerProps) {
   const { nodeInputs, nodeOutputs } = useExecutionStore()
   const { getLatestNodeData } = useExecutionHistoryStore()
-  const { edges, updateNode, nodes } = useWorkflowStore()
+  const { edges, updateNode } = useWorkflowStore()
   
   // Store original node data and edited data
   const [originalNodeData, setOriginalNodeData] = useState<Record<string, unknown> | null>(null)
