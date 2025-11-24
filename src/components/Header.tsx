@@ -1,12 +1,14 @@
-import { Download, Upload, FileText, Trash2 } from 'lucide-react'
+import { Download, Upload, FileText, Trash2, Play } from 'lucide-react'
 import { useWorkflowStore } from '@/store/workflowStore'
 import { downloadWorkflow, readWorkflowFile } from '@/utils/workflowUtils'
-import { useRef } from 'react'
+import { executeWorkflow } from '@/utils/workflowExecutor'
+import { useRef, useState } from 'react'
 
 export default function Header() {
   const { exportWorkflow, importWorkflow, clearWorkflow, workflowName, setWorkflowName } =
     useWorkflowStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isExecuting, setIsExecuting] = useState(false)
 
   const handleSave = () => {
     const workflow = exportWorkflow()
@@ -37,6 +39,26 @@ export default function Header() {
     }
   }
 
+  const handleRun = async () => {
+    setIsExecuting(true)
+    try {
+      const workflow = exportWorkflow()
+      const result = await executeWorkflow(workflow)
+      
+      if (result.errors.length > 0) {
+        alert(`Workflow execution completed with ${result.errors.length} error(s).\n\nErrors:\n${result.errors.map(e => `- Node ${e.nodeId}: ${e.error}`).join('\n')}`)
+      } else {
+        alert('Workflow executed successfully!')
+      }
+      
+      console.log('Execution result:', result)
+    } catch (error) {
+      alert('Failed to execute workflow: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    } finally {
+      setIsExecuting(false)
+    }
+  }
+
   return (
     <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shadow-sm">
       <div className="flex items-center gap-4">
@@ -57,6 +79,15 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-2">
+        <button
+          onClick={handleRun}
+          disabled={isExecuting}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Play className="w-4 h-4" />
+          {isExecuting ? 'Running...' : 'Run'}
+        </button>
+        <div className="h-6 w-px bg-gray-300" />
         <button
           onClick={handleLoad}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"

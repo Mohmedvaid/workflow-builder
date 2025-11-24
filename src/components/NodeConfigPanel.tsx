@@ -1,6 +1,11 @@
 import { X } from 'lucide-react'
 import { useWorkflowStore } from '@/store/workflowStore'
 import type { Node } from 'reactflow'
+import ApiCallConfig from './configs/ApiCallConfig'
+import RunJSConfig from './configs/RunJSConfig'
+import WriteFileConfig from './configs/WriteFileConfig'
+import ReadFileConfig from './configs/ReadFileConfig'
+import AIModelConfig from './configs/AIModelConfig'
 
 interface NodeConfigPanelProps {
   node: Node | null
@@ -15,6 +20,8 @@ export default function NodeConfigPanel({ node, onClose }: NodeConfigPanelProps)
   const handleUpdate = (field: string, value: unknown) => {
     updateNode(node.id, { [field]: value })
   }
+
+  const nodeType = (node.data.type as string) || 'action'
 
   return (
     <div className="absolute right-0 top-0 h-full w-80 bg-white border-l border-gray-200 shadow-xl z-10 flex flex-col">
@@ -36,8 +43,10 @@ export default function NodeConfigPanel({ node, onClose }: NodeConfigPanelProps)
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Node Type</label>
           <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
-            {(node.data.type as string)?.charAt(0).toUpperCase() +
-              (node.data.type as string)?.slice(1) || 'Action'}
+            {nodeType
+              .split('-')
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ')}
           </div>
         </div>
 
@@ -56,26 +65,43 @@ export default function NodeConfigPanel({ node, onClose }: NodeConfigPanelProps)
           />
         </div>
 
-        {/* Description */}
-        <div>
-          <label
-            htmlFor="node-description"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Description
-          </label>
-          <textarea
-            id="node-description"
-            value={(node.data.description as string) || ''}
-            onChange={(e) => handleUpdate('description', e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-            placeholder="Enter node description (optional)"
-          />
+        {/* Description - only for basic nodes */}
+        {!['api-call', 'run-js', 'write-file', 'read-file', 'ai-model'].includes(nodeType) && (
+          <div>
+            <label
+              htmlFor="node-description"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Description
+            </label>
+            <textarea
+              id="node-description"
+              value={(node.data.description as string) || ''}
+              onChange={(e) => handleUpdate('description', e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+              placeholder="Enter node description (optional)"
+            />
+          </div>
+        )}
+
+        {/* Specialized Configuration */}
+        <div className="border-t border-gray-200 pt-4">
+          {nodeType === 'api-call' && (
+            <ApiCallConfig data={node.data} onUpdate={handleUpdate} />
+          )}
+          {nodeType === 'run-js' && <RunJSConfig data={node.data} onUpdate={handleUpdate} />}
+          {nodeType === 'write-file' && (
+            <WriteFileConfig data={node.data} onUpdate={handleUpdate} />
+          )}
+          {nodeType === 'read-file' && (
+            <ReadFileConfig data={node.data} onUpdate={handleUpdate} />
+          )}
+          {nodeType === 'ai-model' && <AIModelConfig data={node.data} onUpdate={handleUpdate} />}
         </div>
 
         {/* Node ID (read-only) */}
-        <div>
+        <div className="border-t border-gray-200 pt-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">Node ID</label>
           <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-500 font-mono">
             {node.id}

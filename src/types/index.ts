@@ -1,6 +1,15 @@
 // Core type definitions for the workflow builder
 
-export type NodeType = 'trigger' | 'action' | 'condition' | 'transform'
+export type NodeType =
+  | 'trigger'
+  | 'action'
+  | 'condition'
+  | 'transform'
+  | 'api-call'
+  | 'run-js'
+  | 'write-file'
+  | 'read-file'
+  | 'ai-model'
 
 export interface WorkflowNode {
   id: string

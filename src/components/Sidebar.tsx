@@ -1,4 +1,14 @@
-import { Play, Settings, GitBranch, Code } from 'lucide-react'
+import {
+  Play,
+  Settings,
+  GitBranch,
+  Code,
+  Globe,
+  Code2,
+  FileDown,
+  FileUp,
+  Brain,
+} from 'lucide-react'
 import type { NodeType } from '@/types'
 
 interface NodeTypeItem {
@@ -7,15 +17,18 @@ interface NodeTypeItem {
   icon: React.ReactNode
   color: string
   description: string
+  category: 'basic' | 'advanced'
 }
 
 const nodeTypes: NodeTypeItem[] = [
+  // Basic nodes
   {
     type: 'trigger',
     label: 'Trigger',
     icon: <Play className="w-4 h-4" />,
     color: 'bg-green-500',
     description: 'Start your workflow',
+    category: 'basic',
   },
   {
     type: 'action',
@@ -23,6 +36,7 @@ const nodeTypes: NodeTypeItem[] = [
     icon: <Settings className="w-4 h-4" />,
     color: 'bg-blue-500',
     description: 'Perform an action',
+    category: 'basic',
   },
   {
     type: 'condition',
@@ -30,6 +44,7 @@ const nodeTypes: NodeTypeItem[] = [
     icon: <GitBranch className="w-4 h-4" />,
     color: 'bg-yellow-500',
     description: 'Add conditional logic',
+    category: 'basic',
   },
   {
     type: 'transform',
@@ -37,6 +52,48 @@ const nodeTypes: NodeTypeItem[] = [
     icon: <Code className="w-4 h-4" />,
     color: 'bg-purple-500',
     description: 'Transform data',
+    category: 'basic',
+  },
+  // Advanced nodes
+  {
+    type: 'api-call',
+    label: 'API Call',
+    icon: <Globe className="w-4 h-4" />,
+    color: 'bg-indigo-500',
+    description: 'Make HTTP requests',
+    category: 'advanced',
+  },
+  {
+    type: 'run-js',
+    label: 'Run JavaScript',
+    icon: <Code2 className="w-4 h-4" />,
+    color: 'bg-amber-500',
+    description: 'Execute JavaScript code',
+    category: 'advanced',
+  },
+  {
+    type: 'write-file',
+    label: 'Write File',
+    icon: <FileDown className="w-4 h-4" />,
+    color: 'bg-teal-500',
+    description: 'Write data to file',
+    category: 'advanced',
+  },
+  {
+    type: 'read-file',
+    label: 'Read File',
+    icon: <FileUp className="w-4 h-4" />,
+    color: 'bg-cyan-500',
+    description: 'Read data from file',
+    category: 'advanced',
+  },
+  {
+    type: 'ai-model',
+    label: 'AI Model',
+    icon: <Brain className="w-4 h-4" />,
+    color: 'bg-pink-500',
+    description: 'Call AI/LLM models',
+    category: 'advanced',
   },
 ]
 
@@ -45,30 +102,66 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ onNodeTypeSelect }: SidebarProps) {
+  const basicNodes = nodeTypes.filter((n) => n.category === 'basic')
+  const advancedNodes = nodeTypes.filter((n) => n.category === 'advanced')
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 h-full overflow-y-auto">
       <div className="p-4">
         <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
           Node Palette
         </h2>
-        <div className="space-y-2">
-          {nodeTypes.map((nodeType) => (
-            <button
-              key={nodeType.type}
-              onClick={() => onNodeTypeSelect?.(nodeType.type)}
-              className="w-full flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors text-left group"
-            >
-              <div
-                className={`${nodeType.color} text-white rounded p-1.5 flex-shrink-0 group-hover:scale-110 transition-transform`}
+
+        {/* Basic Nodes */}
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Basic
+          </h3>
+          <div className="space-y-2">
+            {basicNodes.map((nodeType) => (
+              <button
+                key={nodeType.type}
+                onClick={() => onNodeTypeSelect?.(nodeType.type)}
+                className="w-full flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors text-left group"
               >
-                {nodeType.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-900">{nodeType.label}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{nodeType.description}</div>
-              </div>
-            </button>
-          ))}
+                <div
+                  className={`${nodeType.color} text-white rounded p-1.5 flex-shrink-0 group-hover:scale-110 transition-transform`}
+                >
+                  {nodeType.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900">{nodeType.label}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{nodeType.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Advanced Nodes */}
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Advanced
+          </h3>
+          <div className="space-y-2">
+            {advancedNodes.map((nodeType) => (
+              <button
+                key={nodeType.type}
+                onClick={() => onNodeTypeSelect?.(nodeType.type)}
+                className="w-full flex items-start gap-3 p-3 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-colors text-left group"
+              >
+                <div
+                  className={`${nodeType.color} text-white rounded p-1.5 flex-shrink-0 group-hover:scale-110 transition-transform`}
+                >
+                  {nodeType.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900">{nodeType.label}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">{nodeType.description}</div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

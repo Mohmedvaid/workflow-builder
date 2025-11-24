@@ -16,6 +16,11 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import { useWorkflowStore } from '@/store/workflowStore'
 import BaseNode from './nodes/BaseNode'
+import ApiCallNode from './nodes/ApiCallNode'
+import RunJSNode from './nodes/RunJSNode'
+import WriteFileNode from './nodes/WriteFileNode'
+import ReadFileNode from './nodes/ReadFileNode'
+import AIModelNode from './nodes/AIModelNode'
 import NodeConfigPanel from './NodeConfigPanel'
 
 const nodeTypes = {
@@ -24,6 +29,11 @@ const nodeTypes = {
   action: BaseNode,
   condition: BaseNode,
   transform: BaseNode,
+  'api-call': ApiCallNode,
+  'run-js': RunJSNode,
+  'write-file': WriteFileNode,
+  'read-file': ReadFileNode,
+  'ai-model': AIModelNode,
 }
 
 export default function WorkflowCanvas() {
@@ -121,6 +131,11 @@ export default function WorkflowCanvas() {
               action: '#3b82f6',
               condition: '#eab308',
               transform: '#a855f7',
+              'api-call': '#6366f1',
+              'run-js': '#f59e0b',
+              'write-file': '#14b8a6',
+              'read-file': '#06b6d4',
+              'ai-model': '#ec4899',
             }
             return colors[type] || '#6b7280'
           }}
