@@ -5,7 +5,6 @@ import {
   Code2,
   FileText,
   Brain,
-  Bot,
   Search,
   X,
   MessageSquare,

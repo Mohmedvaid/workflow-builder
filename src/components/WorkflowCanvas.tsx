@@ -135,7 +135,7 @@ export default function WorkflowCanvas() {
         connectionLineStyle={{ strokeWidth: 2, stroke: '#6b7280' }}
       >
         <Background 
-          pattern="dots" 
+          variant="dots" 
           gap={12} 
           size={1}
           color="#d1d5db"

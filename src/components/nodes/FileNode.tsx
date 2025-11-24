@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from 'reactflow'
-import { FileText, FileDown, FileUp } from 'lucide-react'
+import { FileDown, FileUp } from 'lucide-react'
 import { useExecutionStore } from '@/store/executionStore'
 import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'

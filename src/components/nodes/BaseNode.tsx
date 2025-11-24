@@ -12,20 +12,20 @@ interface BaseNodeData {
   [key: string]: unknown
 }
 
-const nodeTypeColors: Record<NodeType, string> = {
+const nodeTypeColors: Partial<Record<NodeType, string>> = {
   trigger: 'bg-green-500',
   condition: 'bg-yellow-500',
 }
 
-const nodeTypeLabels: Record<NodeType, string> = {
+const nodeTypeLabels: Partial<Record<NodeType, string>> = {
   trigger: 'Trigger',
   condition: 'Condition',
 }
 
 export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>) {
   const nodeType = data.type || 'trigger'
-  const colorClass = nodeTypeColors[nodeType]
-  const typeLabel = nodeTypeLabels[nodeType]
+  const colorClass = nodeTypeColors[nodeType] || 'bg-gray-500'
+  const typeLabel = nodeTypeLabels[nodeType] || 'Node'
   const { currentNodeId, nodeInputs, nodeOutputs, isRunning, nodeErrors } = useExecutionStore()
   const { getLatestNodeData } = useExecutionHistoryStore()
   const isCurrentlyRunning = currentNodeId === id && isRunning
@@ -76,8 +76,8 @@ export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>
       {/* Content */}
       <div className="px-4 py-3">
         <div className="text-sm font-medium text-gray-900 truncate">{data.label || 'Untitled Node'}</div>
-        {data.description && (
-          <div className="text-xs text-gray-500 mt-1 line-clamp-2">{data.description as string}</div>
+        {data.description && typeof data.description === 'string' && (
+          <div className="text-xs text-gray-500 mt-1 line-clamp-2">{data.description}</div>
         )}
         {(input !== undefined || output !== undefined || isCurrentlyRunning) && (
           <NodeDataDisplay input={input} output={output} isRunning={isCurrentlyRunning} />

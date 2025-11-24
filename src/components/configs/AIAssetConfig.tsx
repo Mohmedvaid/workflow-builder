@@ -1,4 +1,3 @@
-import { useState } from 'react'
 
 interface AIAssetConfigProps {
   data: Record<string, unknown>

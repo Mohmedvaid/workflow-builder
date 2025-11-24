@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from 'reactflow'
-import { Image, Video, Mic, FileText, Layers } from 'lucide-react'
+import { Image, Video, Mic, Layers } from 'lucide-react'
 import { useExecutionStore } from '@/store/executionStore'
 import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import NodeDataDisplay from './NodeDataDisplay'

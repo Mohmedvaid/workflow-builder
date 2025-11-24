@@ -70,10 +70,14 @@ export default function AIChatNode({ data, selected, id }: NodeProps<AIChatNodeD
             Model: <span className="font-mono">{data.model}</span>
           </div>
         )}
-        {(data.prompt || data.systemPrompt) && (
+        {((typeof data.prompt === 'string' && data.prompt) || (typeof data.systemPrompt === 'string' && data.systemPrompt)) && (
           <div className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
-            {data.prompt ? data.prompt.substring(0, 40) : (data.systemPrompt as string)?.substring(0, 40)}
-            {((data.prompt as string)?.length || (data.systemPrompt as string)?.length || 0) > 40 ? '...' : ''}
+            {typeof data.prompt === 'string' && data.prompt
+              ? data.prompt.substring(0, 40)
+              : typeof data.systemPrompt === 'string' && data.systemPrompt
+                ? data.systemPrompt.substring(0, 40)
+                : ''}
+            {((typeof data.prompt === 'string' && data.prompt?.length) || (typeof data.systemPrompt === 'string' && data.systemPrompt?.length) || 0) > 40 ? '...' : ''}
           </div>
         )}
         {!data.model && !data.prompt && !data.systemPrompt && (
