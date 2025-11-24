@@ -174,6 +174,9 @@ function App() {
         const workflow = exportWorkflow()
         const id = createWorkflow('Untitled Workflow', workflow)
         if (id) {
+          // Initialize default OPENAI_API_KEY for new workflow
+          const envStore = useEnvironmentStore.getState()
+          envStore.setVariable(id, 'OPENAI_API_KEY', 'change-me')
           setCurrentWorkflowId(id)
         }
         setShowUnsavedDialog(false)
@@ -187,16 +190,31 @@ function App() {
     const workflow = exportWorkflow()
     const id = createWorkflow('Untitled Workflow', workflow)
     if (id) {
+      // Initialize default OPENAI_API_KEY for new workflow
+      const envStore = useEnvironmentStore.getState()
+      envStore.setVariable(id, 'OPENAI_API_KEY', 'change-me')
       setCurrentWorkflowId(id)
     }
   }
 
   const handleOpenWorkflow = (id: string) => {
+    // Initialize default OPENAI_API_KEY if it doesn't exist
+    const envStore = useEnvironmentStore.getState()
+    const existingVars = envStore.getAllVariables(id)
+    if (!existingVars.OPENAI_API_KEY) {
+      envStore.setVariable(id, 'OPENAI_API_KEY', 'change-me')
+    }
     if (hasUnsavedChanges()) {
       setPendingNavigation(() => () => {
         const storedWorkflow = getWorkflow(id)
         if (storedWorkflow) {
           importWorkflow(storedWorkflow.workflow)
+          // Initialize default OPENAI_API_KEY if it doesn't exist
+          const envStore = useEnvironmentStore.getState()
+          const existingVars = envStore.getAllVariables(id)
+          if (!existingVars.OPENAI_API_KEY) {
+            envStore.setVariable(id, 'OPENAI_API_KEY', 'change-me')
+          }
           setCurrentWorkflowId(id)
         }
         setShowUnsavedDialog(false)
@@ -209,6 +227,12 @@ function App() {
     const storedWorkflow = getWorkflow(id)
     if (storedWorkflow) {
       importWorkflow(storedWorkflow.workflow)
+      // Initialize default OPENAI_API_KEY if it doesn't exist
+      const envStore = useEnvironmentStore.getState()
+      const existingVars = envStore.getAllVariables(id)
+      if (!existingVars.OPENAI_API_KEY) {
+        envStore.setVariable(id, 'OPENAI_API_KEY', 'change-me')
+      }
       setCurrentWorkflowId(id)
     }
   }

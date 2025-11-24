@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Eye, EyeOff, Plus, Trash2, Key } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Eye, EyeOff, Plus, Trash2, Key, Edit2, Check, X } from 'lucide-react'
 import { useEnvironmentStore } from '@/store/environmentStore'
 
 interface EnvironmentVariablesProps {
@@ -12,11 +12,22 @@ export default function EnvironmentVariables({ workflowId }: EnvironmentVariable
   const [newKey, setNewKey] = useState('')
   const [newValue, setNewValue] = useState('')
   const [isAdding, setIsAdding] = useState(false)
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [editKeyName, setEditKeyName] = useState('')
+  const [editValue, setEditValue] = useState('')
 
   if (!workflowId) return null
 
   const variables = getAllVariables(workflowId)
   const variableEntries = Object.entries(variables)
+
+  // Initialize default OPENAI_API_KEY if no variables exist
+  useEffect(() => {
+    if (workflowId && variableEntries.length === 0) {
+      setVariable(workflowId, 'OPENAI_API_KEY', 'change-me')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowId])
 
   const handleToggleVisibility = (key: string) => {
     setShowValues((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -35,6 +46,38 @@ export default function EnvironmentVariables({ workflowId }: EnvironmentVariable
     if (confirm(`Are you sure you want to delete the environment variable "${key}"?`)) {
       deleteVariable(workflowId, key)
     }
+  }
+
+  const handleStartEdit = (key: string, value: string) => {
+    setEditingKey(key)
+    setEditKeyName(key)
+    setEditValue(value)
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingKey || !editKeyName.trim()) return
+    
+    const oldKey = editingKey
+    const newKeyName = editKeyName.trim()
+    
+    // If key name changed, delete old and create new
+    if (oldKey !== newKeyName) {
+      deleteVariable(workflowId, oldKey)
+      setVariable(workflowId, newKeyName, editValue)
+    } else {
+      // Just update value
+      setVariable(workflowId, newKeyName, editValue)
+    }
+    
+    setEditingKey(null)
+    setEditKeyName('')
+    setEditValue('')
+  }
+
+  const handleCancelEdit = () => {
+    setEditingKey(null)
+    setEditKeyName('')
+    setEditValue('')
   }
 
   const maskValue = (value: string) => {
@@ -126,43 +169,97 @@ export default function EnvironmentVariables({ workflowId }: EnvironmentVariable
           <div className="space-y-2">
             {variableEntries.map(([key, value]) => {
               const isVisible = showValues[key] || false
+              const isEditing = editingKey === key
+              
               return (
                 <div
                   key={key}
                   className="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-md"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-gray-700 mb-1 font-mono">
-                      {key}
+                  {isEditing ? (
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Variable Name
+                        </label>
+                        <input
+                          type="text"
+                          value={editKeyName}
+                          onChange={(e) => setEditKeyName(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Value
+                        </label>
+                        <input
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleSaveEdit}
+                          className="px-2 py-1 text-xs font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 transition-colors flex items-center gap-1"
+                        >
+                          <Check className="w-3 h-3" />
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-2 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" />
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-sm font-mono text-gray-600">
-                      {isVisible ? (
-                        <span className="break-all">{value}</span>
-                      ) : (
-                        <span className="text-gray-400">{maskValue(value)}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleToggleVisibility(key)}
-                      className="p-1.5 hover:bg-gray-200 rounded-md transition-colors"
-                      title={isVisible ? 'Hide value' : 'Show value'}
-                    >
-                      {isVisible ? (
-                        <EyeOff className="w-4 h-4 text-gray-600" />
-                      ) : (
-                        <Eye className="w-4 h-4 text-gray-600" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(key)}
-                      className="p-1.5 hover:bg-red-100 rounded-md transition-colors"
-                      title="Delete variable"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </button>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium text-gray-700 mb-1 font-mono">
+                          {key}
+                        </div>
+                        <div className="text-sm font-mono text-gray-600">
+                          {isVisible ? (
+                            <span className="break-all">{value}</span>
+                          ) : (
+                            <span className="text-gray-400">{maskValue(value)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleStartEdit(key, value)}
+                          className="p-1.5 hover:bg-gray-200 rounded-md transition-colors"
+                          title="Edit variable"
+                        >
+                          <Edit2 className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleVisibility(key)}
+                          className="p-1.5 hover:bg-gray-200 rounded-md transition-colors"
+                          title={isVisible ? 'Hide value' : 'Show value'}
+                        >
+                          {isVisible ? (
+                            <EyeOff className="w-4 h-4 text-gray-600" />
+                          ) : (
+                            <Eye className="w-4 h-4 text-gray-600" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(key)}
+                          className="p-1.5 hover:bg-red-100 rounded-md transition-colors"
+                          title="Delete variable"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )
             })}

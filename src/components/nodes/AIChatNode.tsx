@@ -16,9 +16,10 @@ interface AIChatNodeData {
 }
 
 export default function AIChatNode({ data, selected, id }: NodeProps<AIChatNodeData>) {
-  const { currentNodeId, nodeInputs, nodeOutputs, isRunning } = useExecutionStore()
+  const { currentNodeId, nodeInputs, nodeOutputs, isRunning, nodeErrors } = useExecutionStore()
   const { getLatestNodeData } = useExecutionHistoryStore()
   const isCurrentlyRunning = currentNodeId === id && isRunning
+  const hasError = nodeErrors[id] !== undefined
   
   const currentInput = nodeInputs[id]
   const currentOutput = nodeOutputs[id]
@@ -30,8 +31,12 @@ export default function AIChatNode({ data, selected, id }: NodeProps<AIChatNodeD
   return (
     <div
       className={`w-[200px] bg-white rounded-lg shadow-md border-2 ${
-        selected ? 'border-primary-500' : 'border-gray-200'
-      } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
+        hasError
+          ? 'border-red-300 bg-red-50'
+          : selected
+            ? 'border-primary-500'
+            : 'border-gray-200'
+      } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${hasError ? 'ring-2 ring-red-300 ring-offset-1' : ''} transition-all`}
     >
       {/* Header */}
       <div className="bg-blue-500 text-white px-4 py-2 rounded-t-lg flex items-center justify-between">
@@ -55,13 +60,13 @@ export default function AIChatNode({ data, selected, id }: NodeProps<AIChatNodeD
             Model: <span className="font-mono">{data.model}</span>
           </div>
         )}
-        {data.prompt && (
+        {(data.prompt || data.systemPrompt) && (
           <div className="text-xs text-gray-500 mt-1 line-clamp-2 break-words">
-            {data.prompt.substring(0, 40)}
-            {data.prompt.length > 40 ? '...' : ''}
+            {data.prompt ? data.prompt.substring(0, 40) : (data.systemPrompt as string)?.substring(0, 40)}
+            {((data.prompt as string)?.length || (data.systemPrompt as string)?.length || 0) > 40 ? '...' : ''}
           </div>
         )}
-        {!data.model && !data.prompt && (
+        {!data.model && !data.prompt && !data.systemPrompt && (
           <div className="text-xs text-gray-400 mt-1.5 italic">No configuration</div>
         )}
         {(input !== undefined || output !== undefined || isCurrentlyRunning) && (

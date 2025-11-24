@@ -1,11 +1,12 @@
 import { Upload, FileText, Play } from 'lucide-react'
+import { useState, useRef } from 'react'
 import { useWorkflowStore } from '@/store/workflowStore'
 import { useExecutionStore } from '@/store/executionStore'
 import { useRunHistoryStore } from '@/store/runHistoryStore'
 import { useExecutionHistoryStore } from '@/store/executionHistoryStore'
 import { readWorkflowFile } from '@/utils/workflowUtils'
 import { executeWorkflow } from '@/utils/workflowExecutor'
-import { useRef } from 'react'
+import ErrorDialog from './ErrorDialog'
 
 interface HeaderProps {
   workflowId?: string | null
@@ -14,12 +15,20 @@ interface HeaderProps {
 export default function Header({ workflowId }: HeaderProps) {
   const { exportWorkflow, importWorkflow, workflowName, setWorkflowName, nodes } =
     useWorkflowStore()
-  const { isRunning, clearExecution } = useExecutionStore()
+  const { isRunning, clearExecution, setNodeError } = useExecutionStore()
   const { addRun } = useRunHistoryStore()
   const executionHistoryStore = useExecutionHistoryStore()
+  const [showErrorDialog, setShowErrorDialog] = useState(false)
+  const [executionErrors, setExecutionErrors] = useState<Array<{ nodeId: string; error: string }>>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const nodeCount = nodes.length
   const maxNodes = 50
+
+  // Create node labels map for error dialog
+  const nodeLabels = nodes.reduce((acc, node) => {
+    acc[node.id] = node.data.label || node.id
+    return acc
+  }, {} as Record<string, string>)
 
   const handleLoad = () => {
     fileInputRef.current?.click()
@@ -42,6 +51,9 @@ export default function Header({ workflowId }: HeaderProps) {
 
   const handleRun = async () => {
     const startTime = Date.now()
+    // Clear any previous errors
+    setShowErrorDialog(false)
+    setExecutionErrors([])
     try {
       const workflow = exportWorkflow()
       const executionStore = useExecutionStore.getState()
@@ -74,6 +86,9 @@ export default function Header({ workflowId }: HeaderProps) {
             // Update tracking
             currentExecutionData[nodeId] = { ...currentExecutionData[nodeId], output }
           },
+          setNodeError: (nodeId: string, error: string | null) => {
+            setNodeError(nodeId, error)
+          },
         },
         workflowId
       )
@@ -95,11 +110,8 @@ export default function Header({ workflowId }: HeaderProps) {
       })
 
       if (result.errors.length > 0) {
-        alert(
-          `Workflow execution completed with ${result.errors.length} error(s).\n\nErrors:\n${result.errors.map((e) => `- Node ${e.nodeId}: ${e.error}`).join('\n')}`
-        )
-      } else {
-        alert('Workflow executed successfully!')
+        setExecutionErrors(result.errors)
+        setShowErrorDialog(true)
       }
 
       console.log('Execution result:', result)
@@ -115,7 +127,8 @@ export default function Header({ workflowId }: HeaderProps) {
         executionTime,
         errors: [{ nodeId: '', error: error instanceof Error ? error.message : 'Unknown error' }],
       })
-      alert('Failed to execute workflow: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      setExecutionErrors([{ nodeId: '', error: error instanceof Error ? error.message : 'Unknown error' }])
+      setShowErrorDialog(true)
     } finally {
       clearExecution()
     }
@@ -178,6 +191,16 @@ export default function Header({ workflowId }: HeaderProps) {
         onChange={handleFileChange}
         className="hidden"
       />
+      {showErrorDialog && (
+        <ErrorDialog
+          errors={executionErrors}
+          onClose={() => {
+            setShowErrorDialog(false)
+            setExecutionErrors([])
+          }}
+          nodeLabels={nodeLabels}
+        />
+      )}
     </header>
   )
 }

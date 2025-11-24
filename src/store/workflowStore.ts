@@ -34,7 +34,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   nodes: initialNodes,
   edges: initialEdges,
   workflowName: 'Untitled Workflow',
-  timeout: { hours: 0, minutes: 0 },
+  timeout: { hours: 1, minutes: 0 },
   
   setNodes: (nodes) => {
     if (nodes.length > MAX_NODES) {
@@ -145,7 +145,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         sourceHandle: edge.sourceHandle,
         targetHandle: edge.targetHandle,
       })),
-      timeout: workflow.timeout || { hours: 0, minutes: 0 },
+      timeout: workflow.timeout || { hours: 1, minutes: 0 },
     })
   },
   
@@ -154,6 +154,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       nodes: initialNodes,
       edges: initialEdges,
       workflowName: 'Untitled Workflow',
-      timeout: { hours: 0, minutes: 0 },
+      timeout: { hours: 1, minutes: 0 },
     }),
 }))

@@ -94,10 +94,9 @@ export default function WorkflowSettings({ isOpen, onClose, workflowId }: Workfl
                       <>
                         {timeout.hours > 0 && `${timeout.hours}h `}
                         {timeout.minutes > 0 && `${timeout.minutes}m`}
-                        {timeout.hours === 0 && timeout.minutes === 0 && '0m'}
                       </>
                     ) : (
-                      'No timeout set'
+                      '1h (default)'
                     )}
                   </p>
                 </div>

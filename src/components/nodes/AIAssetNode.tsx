@@ -30,9 +30,10 @@ const assetTypeLabels = {
 }
 
 export default function AIAssetNode({ data, selected, id }: NodeProps<AIAssetNodeData>) {
-  const { currentNodeId, nodeInputs, nodeOutputs, isRunning } = useExecutionStore()
+  const { currentNodeId, nodeInputs, nodeOutputs, isRunning, nodeErrors } = useExecutionStore()
   const { getLatestNodeData } = useExecutionHistoryStore()
   const isCurrentlyRunning = currentNodeId === id && isRunning
+  const hasError = nodeErrors[id] !== undefined
   
   const currentInput = nodeInputs[id]
   const currentOutput = nodeOutputs[id]
@@ -48,8 +49,12 @@ export default function AIAssetNode({ data, selected, id }: NodeProps<AIAssetNod
   return (
     <div
       className={`w-[200px] bg-white rounded-lg shadow-md border-2 ${
-        selected ? 'border-primary-500' : 'border-gray-200'
-      } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
+        hasError
+          ? 'border-red-300 bg-red-50'
+          : selected
+            ? 'border-primary-500'
+            : 'border-gray-200'
+      } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} ${hasError ? 'ring-2 ring-red-300 ring-offset-1' : ''} transition-all`}
     >
       {/* Header */}
       <div className="bg-purple-500 text-white px-4 py-2 rounded-t-lg flex items-center justify-between">

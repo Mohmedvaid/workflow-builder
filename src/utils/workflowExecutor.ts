@@ -13,6 +13,7 @@ interface ExecutionStore {
   setCurrentNode: (nodeId: string | null) => void
   setNodeInput: (nodeId: string, input: unknown) => void
   setNodeOutput: (nodeId: string, output: unknown) => void
+  setNodeError: (nodeId: string, error: string | null) => void
 }
 
 /**
@@ -191,6 +192,7 @@ async function executeNode(
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     context.errors.push({ nodeId: node.id, error: errorMessage })
     if (executionStore) {
+      executionStore.setNodeError(node.id, errorMessage)
       executionStore.setNodeOutput(node.id, { error: errorMessage })
     }
     return null
@@ -352,15 +354,27 @@ async function executeAIChatNode(
   }
 
   const model = (node.data.model as string) || 'gpt-4o'
-  const prompt = (node.data.prompt as string) || ''
-  const temperature = (node.data.temperature as number) ?? 0.7
-  const maxTokens = (node.data.maxTokens as number) ?? 1000
+  const userPrompt = (node.data.prompt as string) || ''
+  const systemPrompt = (node.data.systemPrompt as string) || ''
 
-  if (!prompt) {
-    throw new Error('Prompt is required')
+  if (!userPrompt) {
+    throw new Error('User prompt is required')
   }
 
   try {
+    // Build messages array - include system prompt if provided
+    const messages: Array<{ role: string; content: string }> = []
+    if (systemPrompt) {
+      messages.push({
+        role: 'system',
+        content: systemPrompt,
+      })
+    }
+    messages.push({
+      role: 'user',
+      content: userPrompt,
+    })
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -369,14 +383,7 @@ async function executeAIChatNode(
       },
       body: JSON.stringify({
         model,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature,
-        max_tokens: maxTokens,
+        messages,
       }),
     })
 
@@ -390,13 +397,24 @@ async function executeAIChatNode(
     // Extract the assistant's message content
     const content = data.choices?.[0]?.message?.content || ''
     
-    return ensureJSONOutput({
-      success: true,
-      model,
-      content,
-      usage: data.usage || {},
-      response: data,
-    })
+    // Check if user wants full response or just content
+    const returnFullResponse = (node.data.returnFullResponse as boolean) ?? false
+    
+    if (returnFullResponse) {
+      // Return the full response object
+      return ensureJSONOutput({
+        success: true,
+        model,
+        content,
+        usage: data.usage || {},
+        response: data,
+      })
+    } else {
+      // Return only the content field
+      return ensureJSONOutput({
+        content,
+      })
+    }
   } catch (error) {
     if (error instanceof Error) {
       throw error

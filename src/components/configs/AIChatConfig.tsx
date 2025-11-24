@@ -151,11 +151,28 @@ export default function AIChatConfig({ data, onUpdate }: AIChatConfigProps) {
       </div>
 
       <div>
-        <label htmlFor="ai-chat-prompt" className="block text-sm font-medium text-gray-700 mb-1">
-          Prompt <span className="text-red-500">*</span>
+        <label htmlFor="ai-chat-system-prompt" className="block text-sm font-medium text-gray-700 mb-1">
+          System Prompt
         </label>
         <textarea
-          id="ai-chat-prompt"
+          id="ai-chat-system-prompt"
+          value={(data.systemPrompt as string) || ''}
+          onChange={(e) => onUpdate('systemPrompt', e.target.value)}
+          rows={4}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+          placeholder="Enter system instructions (optional). You can use $json.property, $env.VARIABLE_NAME, or $node.key to reference values."
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Optional: Define the assistant's behavior and role
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="ai-chat-user-prompt" className="block text-sm font-medium text-gray-700 mb-1">
+          User Prompt <span className="text-red-500">*</span>
+        </label>
+        <textarea
+          id="ai-chat-user-prompt"
           value={(data.prompt as string) || ''}
           onChange={(e) => onUpdate('prompt', e.target.value)}
           rows={8}
@@ -167,38 +184,28 @@ export default function AIChatConfig({ data, onUpdate }: AIChatConfigProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="ai-chat-temperature" className="block text-sm font-medium text-gray-700 mb-1">
-            Temperature
-          </label>
-          <input
-            id="ai-chat-temperature"
-            type="number"
-            min="0"
-            max="2"
-            step="0.1"
-            value={(data.temperature as number) ?? 0.7}
-            onChange={(e) => onUpdate('temperature', parseFloat(e.target.value) || 0.7)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 mt-1">0.0 - 2.0 (default: 0.7)</p>
-        </div>
-
-        <div>
-          <label htmlFor="ai-chat-max-tokens" className="block text-sm font-medium text-gray-700 mb-1">
-            Max Tokens
-          </label>
-          <input
-            id="ai-chat-max-tokens"
-            type="number"
-            min="1"
-            max="4096"
-            value={(data.maxTokens as number) ?? 1000}
-            onChange={(e) => onUpdate('maxTokens', parseInt(e.target.value) || 1000)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          />
-          <p className="text-xs text-gray-500 mt-1">1 - 4096 (default: 1000)</p>
+      <div className="border-t border-gray-200 pt-4">
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <label htmlFor="ai-chat-return-full" className="block text-sm font-medium text-gray-700 mb-1">
+              Return Full Response
+            </label>
+            <p className="text-xs text-gray-500">
+              When enabled, returns the complete API response. When disabled, returns only the content field.
+            </p>
+          </div>
+          <div className="ml-4">
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                id="ai-chat-return-full"
+                type="checkbox"
+                checked={(data.returnFullResponse as boolean) ?? false}
+                onChange={(e) => onUpdate('returnFullResponse', e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+            </label>
+          </div>
         </div>
       </div>
 
