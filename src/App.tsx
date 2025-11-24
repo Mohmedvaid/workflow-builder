@@ -6,6 +6,7 @@ import { useWorkflowStore } from './store/workflowStore'
 import { useWorkflowsStore } from './store/workflowsStore'
 import { useEnvironmentStore } from './store/environmentStore'
 import { generateNodeId } from './utils/workflowUtils'
+import { createDemoWorkflow } from './utils/demoWorkflow'
 import type { NodeType } from '@/types'
 import type { Node } from 'reactflow'
 
@@ -105,6 +106,21 @@ function App() {
   useEffect(() => {
     // Environment variables are cleared on page reload for security
     // They are stored in memory only and not persisted
+  }, [])
+
+  // Initialize demo workflow if no workflows exist
+  useEffect(() => {
+    const { workflows, createWorkflow: createWorkflowInStore } = useWorkflowsStore.getState()
+    if (workflows.length === 0) {
+      const demoWorkflow = createDemoWorkflow()
+      const workflowId = createWorkflowInStore(demoWorkflow.name, demoWorkflow)
+      
+      if (workflowId) {
+        // Initialize environment variables for demo workflow
+        const { setVariable } = useEnvironmentStore.getState()
+        setVariable(workflowId, 'OPENAI_API_KEY', 'change-me')
+      }
+    }
   }, [])
 
   // Load workflow from URL on mount - this must run first

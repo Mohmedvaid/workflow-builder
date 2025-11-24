@@ -5,14 +5,14 @@ export default function Documentation() {
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
-    <div className="bg-white rounded-xl border border-orange-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-6 py-4 flex items-center justify-between hover:bg-orange-50 transition-colors"
+        className="w-full px-6 py-4 flex items-center justify-between hover:bg-blue-50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-orange-600" />
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-blue-600" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900">How to Use Workflow Builder</h3>
         </div>
@@ -24,7 +24,7 @@ export default function Documentation() {
       </button>
 
       {isExpanded && (
-        <div className="px-6 py-4 border-t border-orange-100 bg-orange-50/30">
+        <div className="px-6 py-4 border-t border-blue-100 bg-blue-50/30">
           <div className="space-y-6 text-gray-700">
             {/* Getting Started */}
             <section>
@@ -43,25 +43,25 @@ export default function Documentation() {
               <h4 className="font-semibold text-gray-900 mb-2 text-base">Node Types</h4>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <strong className="text-orange-600">Trigger:</strong> Start point of your workflow (required, only one per workflow)
+                  <strong className="text-blue-600">Trigger:</strong> Start point of your workflow (required, only one per workflow)
                 </li>
                 <li>
-                  <strong className="text-orange-600">Condition:</strong> Branch your workflow based on conditions
+                  <strong className="text-blue-600">Condition:</strong> Branch your workflow based on conditions
                 </li>
                 <li>
-                  <strong className="text-orange-600">API Call:</strong> Make HTTP requests to external APIs
+                  <strong className="text-blue-600">API Call:</strong> Make HTTP requests to external APIs
                 </li>
                 <li>
-                  <strong className="text-orange-600">Run JavaScript:</strong> Execute custom JavaScript code
+                  <strong className="text-blue-600">Run JavaScript:</strong> Execute custom JavaScript code
                 </li>
                 <li>
-                  <strong className="text-orange-600">File:</strong> Read or write files (browser download for writes)
+                  <strong className="text-blue-600">File:</strong> Read or write files (browser download for writes)
                 </li>
                 <li>
-                  <strong className="text-orange-600">AI Chat:</strong> Interact with OpenAI chat models (GPT-4, GPT-5, etc.)
+                  <strong className="text-blue-600">AI Chat:</strong> Interact with OpenAI chat models (GPT-4, GPT-5, etc.)
                 </li>
                 <li>
-                  <strong className="text-orange-600">AI Asset:</strong> Generate TTS, STT, images, videos, or embeddings
+                  <strong className="text-blue-600">AI Asset:</strong> Generate TTS, STT, images, videos, or embeddings
                 </li>
               </ul>
             </section>
@@ -72,13 +72,13 @@ export default function Documentation() {
               <p className="text-sm mb-2">Access data from previous nodes, environment variables, or node-specific key-value pairs:</p>
               <ul className="space-y-2 text-sm ml-4">
                 <li>
-                  <code className="bg-white px-2 py-1 rounded text-orange-600">$json.property</code> - Access output from previous node
+                  <code className="bg-white px-2 py-1 rounded text-blue-600">$json.property</code> - Access output from previous node
                 </li>
                 <li>
-                  <code className="bg-white px-2 py-1 rounded text-orange-600">$env.VARIABLE_NAME</code> - Access environment variables
+                  <code className="bg-white px-2 py-1 rounded text-blue-600">$env.VARIABLE_NAME</code> - Access environment variables
                 </li>
                 <li>
-                  <code className="bg-white px-2 py-1 rounded text-orange-600">$node.key</code> - Access node-specific key-value pairs
+                  <code className="bg-white px-2 py-1 rounded text-blue-600">$node.key</code> - Access node-specific key-value pairs
                 </li>
               </ul>
               <p className="text-sm mt-2 text-gray-600">

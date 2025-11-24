@@ -72,13 +72,22 @@ export default function WorkflowCanvas() {
     [edges, setEdges]
   )
 
-  const defaultViewport = useMemo(() => ({ x: 0, y: 0, zoom: 1 }), [])
+  const defaultViewport = useMemo(() => ({ x: 0, y: 0, zoom: 0.85 }), [])
 
   const defaultEdgeOptions = useMemo(
     () => ({
       style: { strokeWidth: 2, stroke: '#6b7280' },
       type: 'smoothstep',
       animated: false,
+    }),
+    []
+  )
+
+  const fitViewOptions = useMemo(
+    () => ({
+      padding: 0.2,
+      maxZoom: 0.85,
+      minZoom: 0.1,
     }),
     []
   )
@@ -120,6 +129,7 @@ export default function WorkflowCanvas() {
         defaultViewport={defaultViewport}
         defaultEdgeOptions={defaultEdgeOptions}
         fitView
+        fitViewOptions={fitViewOptions}
         deleteKeyCode={['Backspace', 'Delete']}
         attributionPosition="bottom-left"
         connectionLineStyle={{ strokeWidth: 2, stroke: '#6b7280' }}
