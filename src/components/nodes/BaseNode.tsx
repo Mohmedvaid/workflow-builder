@@ -1,5 +1,7 @@
 import { Handle, Position, type NodeProps } from 'reactflow'
 import type { NodeType } from '@/types'
+import { useExecutionStore } from '@/store/executionStore'
+import NodeDataDisplay from './NodeDataDisplay'
 
 interface BaseNodeData {
   label: string
@@ -21,16 +23,20 @@ const nodeTypeLabels: Record<NodeType, string> = {
   transform: 'Transform',
 }
 
-export default function BaseNode({ data, selected }: NodeProps<BaseNodeData>) {
+export default function BaseNode({ data, selected, id }: NodeProps<BaseNodeData>) {
   const nodeType = data.type || 'action'
   const colorClass = nodeTypeColors[nodeType]
   const typeLabel = nodeTypeLabels[nodeType]
+  const { currentNodeId, nodeInputs, nodeOutputs, isRunning } = useExecutionStore()
+  const isCurrentlyRunning = currentNodeId === id && isRunning
+  const input = nodeInputs.get(id)
+  const output = nodeOutputs.get(id)
 
   return (
     <div
       className={`min-w-[200px] bg-white rounded-lg shadow-md border-2 ${
         selected ? 'border-primary-500' : 'border-gray-200'
-      } transition-all`}
+      } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
     >
       {/* Header */}
       <div className={`${colorClass} text-white px-4 py-2 rounded-t-lg`}>
@@ -44,6 +50,9 @@ export default function BaseNode({ data, selected }: NodeProps<BaseNodeData>) {
         <div className="text-sm font-medium text-gray-900">{data.label || 'Untitled Node'}</div>
         {data.description && (
           <div className="text-xs text-gray-500 mt-1">{data.description as string}</div>
+        )}
+        {(input !== undefined || output !== undefined || isCurrentlyRunning) && (
+          <NodeDataDisplay input={input} output={output} isRunning={isCurrentlyRunning} />
         )}
       </div>
 

@@ -1,14 +1,21 @@
-import { Download, Upload, FileText, Trash2, Play } from 'lucide-react'
+import { Download, Upload, FileText, Trash2, Play, Plus } from 'lucide-react'
 import { useWorkflowStore } from '@/store/workflowStore'
+import { useExecutionStore } from '@/store/executionStore'
+import { useRunHistoryStore } from '@/store/runHistoryStore'
 import { downloadWorkflow, readWorkflowFile } from '@/utils/workflowUtils'
 import { executeWorkflow } from '@/utils/workflowExecutor'
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 
-export default function Header() {
+interface HeaderProps {
+  onToggleNodePalette?: () => void
+}
+
+export default function Header({ onToggleNodePalette }: HeaderProps) {
   const { exportWorkflow, importWorkflow, clearWorkflow, workflowName, setWorkflowName } =
     useWorkflowStore()
+  const { isRunning, clearExecution } = useExecutionStore()
+  const { addRun } = useRunHistoryStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [isExecuting, setIsExecuting] = useState(false)
 
   const handleSave = () => {
     const workflow = exportWorkflow()
@@ -40,22 +47,55 @@ export default function Header() {
   }
 
   const handleRun = async () => {
-    setIsExecuting(true)
+    const startTime = Date.now()
     try {
       const workflow = exportWorkflow()
-      const result = await executeWorkflow(workflow)
-      
+      const executionStore = useExecutionStore.getState()
+      const result = await executeWorkflow(workflow, {
+        startExecution: executionStore.startExecution,
+        stopExecution: executionStore.stopExecution,
+        setCurrentNode: executionStore.setCurrentNode,
+        setNodeInput: executionStore.setNodeInput,
+        setNodeOutput: executionStore.setNodeOutput,
+      })
+      const executionTime = Date.now() - startTime
+
+      // Save to run history
+      addRun({
+        id: `run-${Date.now()}`,
+        workflowId: workflow.name,
+        workflowName: workflow.name,
+        timestamp: new Date().toISOString(),
+        status: result.errors.length > 0 ? 'error' : 'success',
+        executionTime,
+        errors: result.errors.length > 0 ? result.errors : undefined,
+        nodeOutputs: Object.fromEntries(result.nodeOutputs),
+      })
+
       if (result.errors.length > 0) {
-        alert(`Workflow execution completed with ${result.errors.length} error(s).\n\nErrors:\n${result.errors.map(e => `- Node ${e.nodeId}: ${e.error}`).join('\n')}`)
+        alert(
+          `Workflow execution completed with ${result.errors.length} error(s).\n\nErrors:\n${result.errors.map((e) => `- Node ${e.nodeId}: ${e.error}`).join('\n')}`
+        )
       } else {
         alert('Workflow executed successfully!')
       }
-      
+
       console.log('Execution result:', result)
     } catch (error) {
+      const executionTime = Date.now() - startTime
+      const workflow = exportWorkflow()
+      addRun({
+        id: `run-${Date.now()}`,
+        workflowId: workflow.name,
+        workflowName: workflow.name,
+        timestamp: new Date().toISOString(),
+        status: 'error',
+        executionTime,
+        errors: [{ nodeId: '', error: error instanceof Error ? error.message : 'Unknown error' }],
+      })
       alert('Failed to execute workflow: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
-      setIsExecuting(false)
+      clearExecution()
     }
   }
 
@@ -81,11 +121,11 @@ export default function Header() {
       <div className="flex items-center gap-2">
         <button
           onClick={handleRun}
-          disabled={isExecuting}
+          disabled={isRunning}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Play className="w-4 h-4" />
-          {isExecuting ? 'Running...' : 'Run'}
+          {isRunning ? 'Running...' : 'Run'}
         </button>
         <div className="h-6 w-px bg-gray-300" />
         <button
@@ -108,6 +148,14 @@ export default function Header() {
         >
           <Trash2 className="w-4 h-4" />
           Clear
+        </button>
+        <div className="h-6 w-px bg-gray-300" />
+        <button
+          onClick={onToggleNodePalette}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add Node
         </button>
       </div>
 

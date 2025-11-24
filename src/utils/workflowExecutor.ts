@@ -5,13 +5,28 @@ interface ExecutionContext {
   errors: Array<{ nodeId: string; error: string }>
 }
 
+interface ExecutionStore {
+  startExecution: () => void
+  stopExecution: () => void
+  setCurrentNode: (nodeId: string | null) => void
+  setNodeInput: (nodeId: string, input: unknown) => void
+  setNodeOutput: (nodeId: string, output: unknown) => void
+}
+
 /**
  * Executes a workflow starting from trigger nodes
  */
-export async function executeWorkflow(workflow: Workflow): Promise<ExecutionContext> {
+export async function executeWorkflow(
+  workflow: Workflow,
+  executionStore?: ExecutionStore
+): Promise<ExecutionContext> {
   const context: ExecutionContext = {
     nodeOutputs: new Map(),
     errors: [],
+  }
+
+  if (executionStore) {
+    executionStore.startExecution()
   }
 
   // Find all trigger nodes (nodes with no incoming edges)
@@ -20,13 +35,22 @@ export async function executeWorkflow(workflow: Workflow): Promise<ExecutionCont
   )
 
   if (triggerNodes.length === 0) {
+    if (executionStore) {
+      executionStore.stopExecution()
+    }
     context.errors.push({ nodeId: '', error: 'No trigger nodes found in workflow' })
     return context
   }
 
-  // Execute each trigger node and follow the workflow
-  for (const triggerNode of triggerNodes) {
-    await executeNode(triggerNode, workflow, context, null)
+  try {
+    // Execute each trigger node and follow the workflow
+    for (const triggerNode of triggerNodes) {
+      await executeNode(triggerNode, workflow, context, null, executionStore)
+    }
+  } finally {
+    if (executionStore) {
+      executionStore.stopExecution()
+    }
   }
 
   return context
@@ -39,9 +63,19 @@ async function executeNode(
   node: WorkflowNode,
   workflow: Workflow,
   context: ExecutionContext,
-  input: unknown
+  input: unknown,
+  executionStore?: ExecutionStore
 ): Promise<unknown> {
   try {
+    // Set current node and input for visual feedback
+    if (executionStore) {
+      executionStore.setCurrentNode(node.id)
+      executionStore.setNodeInput(node.id, input)
+    }
+
+    // Small delay for visual feedback
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
     let output: unknown = null
 
     switch (node.type) {
@@ -78,12 +112,17 @@ async function executeNode(
 
     context.nodeOutputs.set(node.id, output)
 
+    // Set output for visual feedback
+    if (executionStore) {
+      executionStore.setNodeOutput(node.id, output)
+    }
+
     // Execute connected nodes
     const outgoingEdges = workflow.edges.filter((edge) => edge.source === node.id)
     for (const edge of outgoingEdges) {
       const targetNode = workflow.nodes.find((n) => n.id === edge.target)
       if (targetNode) {
-        await executeNode(targetNode, workflow, context, output)
+        await executeNode(targetNode, workflow, context, output, executionStore)
       }
     }
 
@@ -91,6 +130,9 @@ async function executeNode(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     context.errors.push({ nodeId: node.id, error: errorMessage })
+    if (executionStore) {
+      executionStore.setNodeOutput(node.id, { error: errorMessage })
+    }
     return null
   }
 }

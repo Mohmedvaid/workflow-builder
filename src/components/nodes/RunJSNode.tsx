@@ -1,5 +1,7 @@
 import { Handle, Position, type NodeProps } from 'reactflow'
 import { Code2 } from 'lucide-react'
+import { useExecutionStore } from '@/store/executionStore'
+import NodeDataDisplay from './NodeDataDisplay'
 
 interface RunJSNodeData {
   label: string
@@ -8,12 +10,17 @@ interface RunJSNodeData {
   [key: string]: unknown
 }
 
-export default function RunJSNode({ data, selected }: NodeProps<RunJSNodeData>) {
+export default function RunJSNode({ data, selected, id }: NodeProps<RunJSNodeData>) {
+  const { currentNodeId, nodeInputs, nodeOutputs, isRunning } = useExecutionStore()
+  const isCurrentlyRunning = currentNodeId === id && isRunning
+  const input = nodeInputs.get(id)
+  const output = nodeOutputs.get(id)
+
   return (
     <div
       className={`min-w-[220px] bg-white rounded-lg shadow-md border-2 ${
         selected ? 'border-primary-500' : 'border-gray-200'
-      } transition-all`}
+      } ${isCurrentlyRunning ? 'ring-2 ring-green-500 ring-offset-2' : ''} transition-all`}
     >
       {/* Header */}
       <div className="bg-amber-500 text-white px-4 py-2 rounded-t-lg flex items-center gap-2">
@@ -31,6 +38,9 @@ export default function RunJSNode({ data, selected }: NodeProps<RunJSNodeData>) 
           </div>
         ) : (
           <div className="text-xs text-gray-400 mt-1.5 italic">No code configured</div>
+        )}
+        {(input !== undefined || output !== undefined || isCurrentlyRunning) && (
+          <NodeDataDisplay input={input} output={output} isRunning={isCurrentlyRunning} />
         )}
       </div>
 
